@@ -1,2 +1,6 @@
 [workspace]
 members = ["crates/*"]
+resolver = "2"
+
+[workspace.dependencies]
+wgpu = "0.15.0"

@@ -2,4 +2,7 @@
 const module = import('../pkg');
 
 console.log('initializing module...');
-module.then(m => m.greet());
+module.then(m => {
+  const canvas = document.getElementById("viewer");
+  m.create_viewer(canvas);
+});

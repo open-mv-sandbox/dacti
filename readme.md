@@ -9,4 +9,4 @@ All APIs and details are subject to change at any time.
 This project uses wasm-bindgen to create the JS bindings around the WASM code.
 To generate a package you can bundle, run `wasm-pack build` in the JS crate's directory.
 See the [wasm-pack documentation](https://rustwasm.github.io/docs/wasm-pack/) for more information.
-The web example does not use wasm-pack (directly), rather delegating it to a bundler.
+You do not need to build the library manually for the web example.
