@@ -1,12 +1,15 @@
 {
   "name": "omfobj-example-web",
   "packageManager": "yarn@3.4.1",
-  "source": "src/index.html",
   "scripts": {
-    "start": "parcel",
-    "build": "parcel build"
+    "dev": "webpack-dev-server",
+    "build": "webpack"
   },
   "devDependencies": {
-    "parcel": "^2.8.3"
+    "@wasm-tool/wasm-pack-plugin": "^1.6.0",
+    "html-webpack-plugin": "^5.5.0",
+    "webpack": "^5.75.0",
+    "webpack-cli": "^5.0.1",
+    "webpack-dev-server": "^4.11.1"
   }
 }

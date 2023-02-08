@@ -8,5 +8,5 @@
 # We are not using zero-installs, this is just an example
 .pnp.*
 
-.parcel-cache/*
 dist/*
+pkg/*
