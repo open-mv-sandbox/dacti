@@ -1,5 +1,7 @@
 mod triangle;
 
+use std::{cell::RefCell, rc::Rc};
+
 use raw_window_handle::{
     HasRawDisplayHandle, HasRawWindowHandle, RawDisplayHandle, RawWindowHandle, WebDisplayHandle,
     WebWindowHandle,
@@ -28,7 +30,32 @@ pub fn create_viewer(target: JsValue) {
     let surface = unsafe { instance.create_surface(&handle) }.unwrap();
 
     wasm_bindgen_futures::spawn_local(triangle::run(instance, surface));
+
+    let keepalive = Rc::new(RefCell::new(None));
+    schedule_tick(keepalive);
 }
+
+fn tick(keepalive: KeepaliveHandle) {
+    event!(Level::INFO, "tick");
+
+    schedule_tick(keepalive);
+}
+
+fn schedule_tick(keepalive: KeepaliveHandle) {
+    let keepalive_c = keepalive.clone();
+    let callback = Closure::<dyn Fn()>::new(move || tick(keepalive_c.clone()));
+
+    let window = web_sys::window().unwrap();
+    window
+        .request_animation_frame(callback.as_ref().unchecked_ref())
+        .unwrap();
+
+    // Make closure own itself, thus the old one keeps getting cleaned up, eventually permanently when
+    // the tick returns without re-scheduling.
+    *keepalive.borrow_mut() = Some(callback);
+}
+
+type KeepaliveHandle = Rc<RefCell<Option<Closure<dyn Fn()>>>>;
 
 struct RawCanvasHandle(u32);
 
