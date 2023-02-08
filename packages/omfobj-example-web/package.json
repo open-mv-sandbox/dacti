@@ -1,0 +1,12 @@
+{
+  "name": "omfobj-example-web",
+  "packageManager": "yarn@3.4.1",
+  "source": "src/index.html",
+  "scripts": {
+    "start": "parcel",
+    "build": "parcel build"
+  },
+  "devDependencies": {
+    "parcel": "^2.8.3"
+  }
+}

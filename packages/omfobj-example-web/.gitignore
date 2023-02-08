@@ -1,0 +1,12 @@
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+# We are not using zero-installs, this is just an example
+.pnp.*
+
+.parcel-cache/*
+dist/*
