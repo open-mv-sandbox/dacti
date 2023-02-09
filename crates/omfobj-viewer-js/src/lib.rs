@@ -1,54 +1,62 @@
-mod instance;
+mod inner;
+mod surface;
 
 use std::{cell::RefCell, rc::Rc};
 
-use instance::ViewerInstance;
-use raw_window_handle::{
-    HasRawDisplayHandle, HasRawWindowHandle, RawDisplayHandle, RawWindowHandle, WebDisplayHandle,
-    WebWindowHandle,
-};
 use tracing::{event, Level};
 use wasm_bindgen::prelude::*;
 use web_sys::HtmlCanvasElement;
-use wgpu::{Instance, Surface};
+use wgpu::Instance;
 
-/// Create a viewer instance on a given canvas.
+use crate::inner::ViewerInner;
+
+/// omfobj-viewer web instance.
 #[wasm_bindgen]
-pub fn create_viewer(target: JsValue) {
-    init_hooks();
-
-    event!(Level::INFO, "creating viewer instance");
-
-    let target: HtmlCanvasElement = target
-        .dyn_into()
-        .expect("given target is not a canvas element");
-
-    // Attach a reference to the canvas to find it
-    target.dataset().set("rawHandle", "42").unwrap();
-    let handle = RawCanvasHandle(42);
-
-    // Hook WGPU onto the canvas
-    let instance = wgpu::Instance::default();
-    let surface = unsafe { instance.create_surface(&handle) }.unwrap();
-
-    // Create the JS viwere instance
-    let future = spawn_instance(instance, surface);
-    wasm_bindgen_futures::spawn_local(future);
+pub struct Viewer {
+    #[allow(dead_code)]
+    handle: ViewerHandle,
 }
 
-async fn spawn_instance(instance: Instance, surface: Surface) {
-    let viewer = ViewerInstance::new(instance, surface).await;
+#[wasm_bindgen]
+impl Viewer {
+    /// Create a new instance that renders to a given target canvas.
+    pub async fn from_canvas(target: JsValue) -> Viewer {
+        init_hooks();
+
+        event!(Level::INFO, "creating omfobj-viewer");
+
+        let instance = Instance::default();
+
+        // Create the surface
+        let target: HtmlCanvasElement = target
+            .dyn_into()
+            .expect("given target is not a canvas element");
+        let surface = surface::create(&instance, &target);
+
+        // Create the JS viewer instance
+        let inner = ViewerInner::new(instance, surface).await;
+        let handle = create_handle(inner);
+        schedule_tick(handle.clone());
+
+        Self { handle }
+    }
+
+    pub fn add_object(&self, _object: u32) {
+        event!(Level::INFO, "adding object to viewer");
+        // Placeholder function
+    }
+}
+
+fn create_handle(inner: ViewerInner) -> ViewerHandle {
     let wrapper = ViewerWrapper {
-        viewer,
+        inner,
         keepalive: None,
     };
-    let handle = Rc::new(RefCell::new(wrapper));
-
-    schedule_tick(handle);
+    Rc::new(RefCell::new(wrapper))
 }
 
 fn tick(handle: ViewerHandle) {
-    handle.borrow_mut().viewer.tick();
+    handle.borrow_mut().inner.tick();
 
     schedule_tick(handle);
 }
@@ -70,24 +78,8 @@ fn schedule_tick(handle: ViewerHandle) {
 type ViewerHandle = Rc<RefCell<ViewerWrapper>>;
 
 struct ViewerWrapper {
-    viewer: ViewerInstance,
+    inner: ViewerInner,
     keepalive: Option<Closure<dyn Fn()>>,
-}
-
-struct RawCanvasHandle(u32);
-
-unsafe impl HasRawDisplayHandle for RawCanvasHandle {
-    fn raw_display_handle(&self) -> RawDisplayHandle {
-        RawDisplayHandle::Web(WebDisplayHandle::empty())
-    }
-}
-
-unsafe impl HasRawWindowHandle for RawCanvasHandle {
-    fn raw_window_handle(&self) -> RawWindowHandle {
-        let mut handle = WebWindowHandle::empty();
-        handle.id = self.0;
-        RawWindowHandle::Web(handle)
-    }
 }
 
 /// Initialize global hooks that may not yet be initialized.

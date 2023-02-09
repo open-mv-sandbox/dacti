@@ -1,8 +1,14 @@
-// Automatically built for us by webpack
-const module = import('../pkg');
+async function init() {
+  // Load the viewer WebAssembly module
+  console.log('initializing module...');
+  const {Viewer} = await import('../pkg');
 
-console.log('initializing module...');
-module.then(m => {
+  // Create the viewer
   const canvas = document.getElementById("viewer");
-  m.create_viewer(canvas);
-});
+  const viewer = await Viewer.from_canvas(canvas);
+
+  // Add an object
+  viewer.add_object(42);
+}
+
+init();

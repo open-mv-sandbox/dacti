@@ -9,14 +9,14 @@ use wgpu::{
     ShaderSource, Surface, SurfaceConfiguration, TextureUsages, TextureViewDescriptor, VertexState,
 };
 
-pub struct ViewerInstance {
+pub struct ViewerInner {
     surface: Surface,
     device: Device,
     queue: Queue,
     render_pipeline: RenderPipeline,
 }
 
-impl ViewerInstance {
+impl ViewerInner {
     pub async fn new(instance: Instance, surface: Surface) -> Self {
         let adapter = instance
             .request_adapter(&RequestAdapterOptions {
@@ -26,7 +26,7 @@ impl ViewerInstance {
                 compatible_surface: Some(&surface),
             })
             .await
-            .expect("Failed to find an appropriate adapter");
+            .unwrap();
 
         // Create the logical device and command queue
         let (device, queue) = adapter
@@ -40,12 +40,12 @@ impl ViewerInstance {
                 None,
             )
             .await
-            .expect("Failed to create device");
+            .unwrap();
 
         // Load the shaders from disk
         let shader = device.create_shader_module(ShaderModuleDescriptor {
             label: None,
-            source: ShaderSource::Wgsl(Cow::Borrowed(include_str!("shader.wgsl"))),
+            source: ShaderSource::Wgsl(Cow::Borrowed(include_str!("./shaders/shader.wgsl"))),
         });
 
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
@@ -99,17 +99,17 @@ impl ViewerInstance {
     pub fn tick(&self) {
         event!(Level::INFO, "viewer tick");
 
-        // Render once
         let frame = self
             .surface
             .get_current_texture()
-            .expect("Failed to acquire next swap chain texture");
+            .unwrap();
         let view = frame.texture.create_view(&TextureViewDescriptor::default());
+
         let mut encoder = self
             .device
             .create_command_encoder(&CommandEncoderDescriptor { label: None });
         {
-            let mut rpass = encoder.begin_render_pass(&RenderPassDescriptor {
+            let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
                 label: None,
                 color_attachments: &[Some(RenderPassColorAttachment {
                     view: &view,
@@ -121,8 +121,8 @@ impl ViewerInstance {
                 })],
                 depth_stencil_attachment: None,
             });
-            rpass.set_pipeline(&self.render_pipeline);
-            rpass.draw(0..3, 0..1);
+            render_pass.set_pipeline(&self.render_pipeline);
+            render_pass.draw(0..3, 0..1);
         }
 
         self.queue.submit(Some(encoder.finish()));

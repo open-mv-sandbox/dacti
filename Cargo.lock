@@ -505,6 +505,7 @@ name = "omfobj-viewer-js"
 version = "0.1.0"
 dependencies = [
  "console_error_panic_hook",
+ "js-sys",
  "omfobj-viewer",
  "raw-window-handle",
  "tracing",

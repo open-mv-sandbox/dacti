@@ -8,6 +8,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 console_error_panic_hook = "0.1.6"
+js-sys = "0.3.61"
 raw-window-handle = "0.5.0"
 tracing = "0.1.37"
 tracing-wasm = "0.2.1"
