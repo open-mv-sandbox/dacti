@@ -1,7 +1,8 @@
-mod triangle;
+mod instance;
 
 use std::{cell::RefCell, rc::Rc};
 
+use instance::ViewerInstance;
 use raw_window_handle::{
     HasRawDisplayHandle, HasRawWindowHandle, RawDisplayHandle, RawWindowHandle, WebDisplayHandle,
     WebWindowHandle,
@@ -9,13 +10,14 @@ use raw_window_handle::{
 use tracing::{event, Level};
 use wasm_bindgen::prelude::*;
 use web_sys::HtmlCanvasElement;
+use wgpu::{Instance, Surface};
 
 /// Create a viewer instance on a given canvas.
 #[wasm_bindgen]
 pub fn create_viewer(target: JsValue) {
     init_hooks();
 
-    event!(Level::INFO, "creating viewer");
+    event!(Level::INFO, "creating viewer instance");
 
     let target: HtmlCanvasElement = target
         .dyn_into()
@@ -29,21 +31,31 @@ pub fn create_viewer(target: JsValue) {
     let instance = wgpu::Instance::default();
     let surface = unsafe { instance.create_surface(&handle) }.unwrap();
 
-    wasm_bindgen_futures::spawn_local(triangle::run(instance, surface));
-
-    let keepalive = Rc::new(RefCell::new(None));
-    schedule_tick(keepalive);
+    // Create the JS viwere instance
+    let future = spawn_instance(instance, surface);
+    wasm_bindgen_futures::spawn_local(future);
 }
 
-fn tick(keepalive: KeepaliveHandle) {
-    event!(Level::INFO, "tick");
+async fn spawn_instance(instance: Instance, surface: Surface) {
+    let viewer = ViewerInstance::new(instance, surface).await;
+    let wrapper = ViewerWrapper {
+        viewer,
+        keepalive: None,
+    };
+    let handle = Rc::new(RefCell::new(wrapper));
 
-    schedule_tick(keepalive);
+    schedule_tick(handle);
 }
 
-fn schedule_tick(keepalive: KeepaliveHandle) {
-    let keepalive_c = keepalive.clone();
-    let callback = Closure::<dyn Fn()>::new(move || tick(keepalive_c.clone()));
+fn tick(handle: ViewerHandle) {
+    handle.borrow_mut().viewer.tick();
+
+    schedule_tick(handle);
+}
+
+fn schedule_tick(handle: ViewerHandle) {
+    let handle_c = handle.clone();
+    let callback = Closure::<dyn Fn()>::new(move || tick(handle_c.clone()));
 
     let window = web_sys::window().unwrap();
     window
@@ -52,10 +64,15 @@ fn schedule_tick(keepalive: KeepaliveHandle) {
 
     // Make closure own itself, thus the old one keeps getting cleaned up, eventually permanently when
     // the tick returns without re-scheduling.
-    *keepalive.borrow_mut() = Some(callback);
+    handle.borrow_mut().keepalive = Some(callback);
 }
 
-type KeepaliveHandle = Rc<RefCell<Option<Closure<dyn Fn()>>>>;
+type ViewerHandle = Rc<RefCell<ViewerWrapper>>;
+
+struct ViewerWrapper {
+    viewer: ViewerInstance,
+    keepalive: Option<Closure<dyn Fn()>>,
+}
 
 struct RawCanvasHandle(u32);
 
