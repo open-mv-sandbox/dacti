@@ -1,5 +1,8 @@
 # OMF Object Viewer Prototype
 
+*Note: This project, and its repository, is going to be renamed soon.
+[See this tracking issue for more information](https://github.com/open-mv-sandbox/omfobj-viewer-proto/issues/1).*
+
 Prototype viewer for metaverse objects, for both native and browser platforms.
 
 This is a sandbox workspace for explorations in building the Open Metaverse Foundation object
