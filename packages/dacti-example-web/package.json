@@ -1,5 +1,5 @@
 {
-  "name": "omfobj-example-web",
+  "name": "dacti-example-web",
   "packageManager": "yarn@3.4.1",
   "scripts": {
     "dev": "webpack-dev-server",

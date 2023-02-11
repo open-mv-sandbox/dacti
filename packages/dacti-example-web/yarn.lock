@@ -1114,6 +1114,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"dacti-example-web@workspace:.":
+  version: 0.0.0-use.local
+  resolution: "dacti-example-web@workspace:."
+  dependencies:
+    "@wasm-tool/wasm-pack-plugin": ^1.6.0
+    html-webpack-plugin: ^5.5.0
+    webpack: ^5.75.0
+    webpack-cli: ^5.0.1
+    webpack-dev-server: ^4.11.1
+  languageName: unknown
+  linkType: soft
+
 "debug@npm:2.6.9":
   version: 2.6.9
   resolution: "debug@npm:2.6.9"
@@ -2596,18 +2608,6 @@ __metadata:
   checksum: 41a2ba310e7b6f6c3b905af82c275bf8854896e2e4c5752966d64cbcd2f599cfffd5932006bcf3b8b419dfdacebb3a3912d5d94e10f1d0acab59876c8757f27f
   languageName: node
   linkType: hard
-
-"omfobj-example-web@workspace:.":
-  version: 0.0.0-use.local
-  resolution: "omfobj-example-web@workspace:."
-  dependencies:
-    "@wasm-tool/wasm-pack-plugin": ^1.6.0
-    html-webpack-plugin: ^5.5.0
-    webpack: ^5.75.0
-    webpack-cli: ^5.0.1
-    webpack-dev-server: ^4.11.1
-  languageName: unknown
-  linkType: soft
 
 "on-finished@npm:2.4.1":
   version: 2.4.1

@@ -8,7 +8,7 @@ async function init() {
   const viewer = await Viewer.from_canvas(canvas);
 
   // Add an object
-  viewer.add_object(42);
+  viewer.spawn_object(42);
 }
 
 init();

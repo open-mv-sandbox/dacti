@@ -1,5 +1,5 @@
 [package]
-name = "omfobj-viewer-js"
+name = "dacti-viewer-js"
 version = "0.1.0"
 edition = "2021"
 
@@ -15,7 +15,7 @@ tracing-wasm = "0.2.1"
 wasm-bindgen = "0.2.63"
 wasm-bindgen-futures = "0.4.34"
 wgpu.workspace = true
-omfobj-viewer = { path = "../omfobj-viewer" }
+dacti-viewer = { path = "../dacti-viewer" }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wgpu = { workspace = true, features = ["webgl"] }

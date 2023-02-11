@@ -196,6 +196,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "dacti-viewer"
+version = "0.1.0"
+
+[[package]]
+name = "dacti-viewer-js"
+version = "0.1.0"
+dependencies = [
+ "console_error_panic_hook",
+ "dacti-viewer",
+ "js-sys",
+ "raw-window-handle",
+ "tracing",
+ "tracing-wasm",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+ "wgpu",
+]
+
+[[package]]
 name = "foreign-types"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -494,26 +514,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ea86265d3d3dcb6a27fc51bd29a4bf387fae9d2986b823079d4986af253eb439"
 dependencies = [
  "memchr",
-]
-
-[[package]]
-name = "omfobj-viewer"
-version = "0.1.0"
-
-[[package]]
-name = "omfobj-viewer-js"
-version = "0.1.0"
-dependencies = [
- "console_error_panic_hook",
- "js-sys",
- "omfobj-viewer",
- "raw-window-handle",
- "tracing",
- "tracing-wasm",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
- "wgpu",
 ]
 
 [[package]]

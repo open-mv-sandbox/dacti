@@ -14,7 +14,7 @@ module.exports = {
       template: './src/index.html',
     }),
     new WasmPackPlugin({
-      crateDirectory: path.resolve(__dirname, "../../crates/omfobj-viewer-js"),
+      crateDirectory: path.resolve(__dirname, "../../crates/dacti-viewer-js"),
       outDir: path.resolve(__dirname, "./pkg"),
     }),
   ],

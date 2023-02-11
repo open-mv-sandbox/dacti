@@ -10,7 +10,7 @@ use wgpu::Instance;
 
 use crate::inner::ViewerInner;
 
-/// omfobj-viewer web instance.
+/// Viewer web instance.
 #[wasm_bindgen]
 pub struct Viewer {
     #[allow(dead_code)]
@@ -23,7 +23,7 @@ impl Viewer {
     pub async fn from_canvas(target: JsValue) -> Viewer {
         init_hooks();
 
-        event!(Level::INFO, "creating omfobj-viewer");
+        event!(Level::INFO, "creating viewer");
 
         let instance = Instance::default();
 
@@ -41,8 +41,8 @@ impl Viewer {
         Self { handle }
     }
 
-    pub fn add_object(&self, _object: u32) {
-        event!(Level::INFO, "adding object to viewer");
+    pub fn spawn_object(&self, _object: u32) {
+        event!(Level::INFO, "spawning object");
         // Placeholder function
     }
 }
@@ -70,8 +70,7 @@ fn schedule_tick(handle: ViewerHandle) {
         .request_animation_frame(callback.as_ref().unchecked_ref())
         .unwrap();
 
-    // Make closure own itself, thus the old one keeps getting cleaned up, eventually permanently when
-    // the tick returns without re-scheduling.
+    // Make closure own itself, preventing it from being cleaned up untill called back
     handle.borrow_mut().keepalive = Some(callback);
 }
 
