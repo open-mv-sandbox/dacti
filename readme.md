@@ -1,14 +1,35 @@
-# OMF Object Viewer Prototype
+# Dacti Object Format
 
-*Note: This project, and its repository, is going to be renamed soon.
-[See this tracking issue for more information](https://github.com/open-mv-sandbox/omfobj-viewer-proto/issues/1).*
+This repository is a sandbox workspace for building the "dacti" metaverse object format.
 
-Prototype viewer for metaverse objects, for both native and browser platforms.
+Dacti itself refers to the "container" and "self-descriptive object" specification.
+It is a work-in-progress object format for describing the visual representation of data, and
+attaching functionality to that data, in an and extensible way that's easy to support at various
+levels.
 
-This is a sandbox workspace for explorations in building the Open Metaverse Foundation object
-specification, and tools for creating and viewing these objects.
-This is not ready for production use, all APIs, file formats, and other details are subject to
-change at any time.
+The dacti object speficiation can be used for objects 'at rest'.
+For example, when stored on a file system, or sent to applications as a file.
+The object specifications can be used both to describe the entirety of an object, and to describe a
+subset of an object, or a replicated mirror of an object for a client to display.
+
+The dacti container speficiation can bundle a collection of data, which can be indexed and
+subdivided with simple offsets.
+This container allows you to bundle an object specification together with its data in one file, to
+store and transfer objects in a self-contained way.
+As well, the offset indexes allow you to bundle a large collection of objects and data in a file,
+that can be fetched sparsely using [HTTP range requests](https://developer.mozilla.org/en-US/docs/Web/HTTP/Range_requests).
+
+The name "dacti" comes from the lojban word describing something as being a material object
+enduring in space-time.
+
+Everything in this workspace is not ready for production use.
+All APIs, file formats, and other details are subject to change at any time.
+
+## Dacti viewer
+
+To explore the development of this format, this repository contains a reference viewer
+implementation.
+This viewer may be eventually split out and renamed to become its own application in the future.
 
 ## Building Standalone JS Library
 
