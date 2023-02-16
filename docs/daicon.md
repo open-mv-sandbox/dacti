@@ -130,13 +130,16 @@ If not null, the extension descibes the location of another interface table. Thi
 
 A reader **MAY** decide not to read the extension table if it has already read the interfaces required by the format. If this is not the case, a reader **MUST** follow the extension, or inform the caller it must do so.
 
+A reader **MUST** track tables already read, and ignore loops. A reader **MAY** raise a debugging warning when this is encountered.
+
+Formats **MAY** opt to only include the minimal amount of interfaces necessary in the base table, and move all optional and less important interfaces to an extension table, to reduce the base table size for the purpose of "Reducing Round-Trips".
+
 ### Inner Data
 
 After these sections, the rest of the file contains arbitrary data. For example:
 
 - Interface regions, containing the interface implementations
 - Data regions indirectly referenced by interfaces
-- Extended data used by future versions of this specification
 
 ## Examples
 
