@@ -15,7 +15,7 @@ Daicon containers are designed, but not exclusively for, containing metaverse ob
 
 - Backwards and forwards compatibility. If the design of a format changes, or a new format comes in vogue, the interface system allows formats to adapt while still providing interfaces for older systems.
 - Easy to parse. Daicon containers are extremely easy to parse in any language, even without dynamic memory. The surface area of the standard is also intentionally very low, meaning no special cases or obscure extensions you need to support for full coverage.
-- Low overhead. A format based on daicon containers is just 36 bytes larger than the raw format itself. This one bullet point alone is over four times as large as that.
+- Low overhead. A format based on daicon containers is just 68 bytes larger than the raw interface. This one bullet point alone is over two times larger.
 - Inner type metdata and versioning. Besides identifying and versioning interfaces, a format that uses daicon containers can also be uniquely identified by the header, including backwards and forwards compatibility for minor versions.
 - Direct addressing. Daicon containers do not require any special parsing or decompressing at a container level to access the inner data. This is delegated to the inner interfaces which may, in the case of "dacti packages" for example, decide to only do compression at a per-object level. This allows areas to be directly addressed through, for example, [HTTP Range Requests](https://developer.mozilla.org/en-US/docs/Web/HTTP/Range_requests).
 - Cache coherency. Daicon is designed to work well with CDN and edge caches. Derived formats can append additional data and update atomically without needing to invalidate the entire file.
@@ -38,16 +38,6 @@ For example, this means you can increase the minimum minor version of an interfa
 
 To allow this method of backwards compatibility, you are allowed to include multiple major versions of interfaces. If you find yourself needing to include multiple *minor* versions, you are likely not correctly following semantic versioning.
 
-### Early Partial Loading
-
-A format may define a *recommended* order of interfaces in the file, and recommend the interface table to be placed at the start. This should never be required, however.
-
-A conforming implementation may take advantage of recommended ordering to reduce time-to-render by interpreting the early incomplete data first, before the rest has arrived.
-
-For example, an especially large multimedia objects index file, with optional 'levels of detail', may have the indices and cross-references for the lowest levels of detail first.
-
-This would allow an implementation fetching additional data to start fetching related objects before the entire index file has arrived, reducing head-of-line blocking issues.
-
 ### CDN Cache Coherency
 
 Daicon containers are designed for efficient cache coherency on CDNs and edge caches. To achieve this they allow for derived formats that use daicon containers to include padding for append-only updates.
@@ -58,7 +48,9 @@ If your format will be used for this, you can use the "offset" and "size" values
 
 If your format will be fetched *partially* from a server, and then indexed using ranges, your format specification should include recommendations to reduce necessary round-trips.
 
-For example, you can recommend (or even require) an index interface describing regions contained in your file to exist within the first 64kb. This would allow a client aware of your format to always fetch the full first 64kb and not need additional round-trips to the server. You are recommended to specify that clients should degrade performance rather than fail if this data exceeds the specified region.
+For example, you can recommend (or even require) an index interface describing regions contained in your file to exist within the first 64kb. This would allow a client aware of your format to always fetch the full first 64kb and not need additional round-trips to the server.
+
+Not all interfaces have to fall in this region, only those that need this 'fast-path'. You are recommended to specify that clients should degrade performance rather than fail if the included interfaces' data exceeds the specified region.
 
 If you implement this, you are recommended to pad the additional space in this region, reserving it, to allow the file to be updated without a full cache flush. You should also pad the interface table for the same reason.
 
