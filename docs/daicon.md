@@ -4,7 +4,7 @@
 
 Daicon containers are a wrapping file format, made to make file self-description and versioning easier. They let a file format describe itself using a UUID and semantic version. Additionally, they provide a flexible way to define named and versioned regions of data in the file, called "interfaces".
 
-| | |
+| Key | Value |
 | --- | --- |
 | Name | Daicon Container Format |
 | Version | 0.1.0-draft 🚧 |
@@ -16,9 +16,9 @@ Daicon containers are designed, but not exclusively for, containing metaverse ob
 - Backwards and forwards compatibility. If the design of a format changes, or a new format comes in vogue, the interface system allows formats to adapt while still providing interfaces for older systems.
 - Easy to parse. Daicon containers are extremely easy to parse in any language, even without dynamic memory. The surface area of the standard is also intentionally very low, meaning no special cases or obscure extensions you need to support for full coverage.
 - Low overhead. A format based on daicon containers is just 36 bytes larger than the raw format itself. This one bullet point alone is over four times as large as that.
-- Direct addressing. Daicon containers do not require any special parsing or decompressing at a container level to access the inner data. This is delegated to the inner interfaces which may, in the case of "dacti packages" for example, decide to only do compression at a per-object level. This allows areas to be directly addressed through, for example, [HTTP Range Requests](https://developer.mozilla.org/en-US/docs/Web/HTTP/Range_requests).
 - Inner type metdata and versioning. Besides identifying and versioning interfaces, a format that uses daicon containers can also be uniquely identified by the header, including backwards and forwards compatibility for minor versions.
-- Gradual region invalidation, even across base format updates. Daicon allows you to relocate the interface table to any location, this means you can dynamically allocate space as required without being forced to collide with data in old regions. This is useful for caching, that old data may still be in use!
+- Direct addressing. Daicon containers do not require any special parsing or decompressing at a container level to access the inner data. This is delegated to the inner interfaces which may, in the case of "dacti packages" for example, decide to only do compression at a per-object level. This allows areas to be directly addressed through, for example, [HTTP Range Requests](https://developer.mozilla.org/en-US/docs/Web/HTTP/Range_requests).
+- Cache coherency. Daicon is designed to work well with CDN and edge caches. Derived formats can append additional data and update atomically without needing to invalidate the entire file.
 
 ## Using Daicon for a Format
 
@@ -26,9 +26,7 @@ Daicon is intended to be used as the basis for other file formats. This allows a
 
 ### Creating a Format
 
-When you use daicon containers for your format, you need to randomly generate a UUID to identify your format with.
-
-Additionally, it is recommended that you pick an extension for your file. Daicon files, while allowing standardized parsing of certain metadata, are not intended to contain more than one base format.
+When you use daicon containers for your format, you need to randomly generate a UUID to identify your format with. It is recommended that you pick a unique extension for your file.
 
 You should then define which interfaces, and their minimum versions, your format **requires**. These interfaces can be re-used between different formats, in fact, the use of standard interfaces is recommended.
 
@@ -50,45 +48,54 @@ For example, an especially large multimedia objects index file, with optional 'l
 
 This would allow an implementation fetching additional data to start fetching related objects before the entire index file has arrived, reducing head-of-line blocking issues.
 
+### CDN Cache Coherency
+
+Daicon containers are designed for efficient cache coherency on CDNs and edge caches. To achieve this they allow for derived formats that use daicon containers to include padding for append-only updates.
+
+If your format will be used for this, you can use the "offset" and "size" values in the index table as atomic switches, after appending or relocating data and validating all caches have been updated. You are recommended to define padding data in your format's specification to make this possible.
+
+### Reducing Round-Trips
+
+If your format will be fetched *partially* from a server, and then indexed using ranges, your format specification should include recommendations to reduce necessary round-trips.
+
+For example, you can recommend (or even require) an index interface describing regions contained in your file to exist within the first 64kb. This would allow a client aware of your format to always fetch the full first 64kb and not need additional round-trips to the server. You are recommended to specify that clients should degrade performance rather than fail if this data exceeds the specified region.
+
+If you implement this, you are recommended to pad the additional space in this region, reserving it, to allow the file to be updated without a full cache flush. You should also pad the interface table for the same reason.
+
+You are not required to perform this padding, and in fact, if your file will not be updated like this you are recommended to *not* do it to avoid unnecessary overhead.
+
 ## Daicon Format
 
-Daicon container files are made up out of multiple sections.
+Daicon containers are made up out of multiple sections.
 
 | Bytes | Description |
 | --- | --- |
-| 12 | magic header |
-| 28 | format section |
+| 8 | signature |
+| 20 | format |
+| 4 + (N * 36) | interface table |
 | ... | inner data |
 
-Additionally, the interface table can exist at any location in the inner data.
+### Signature
 
-| Bytes | Description |
-| --- | --- |
-| 4 | header |
-| N * 36 | interface entries |
-
-### Magic Header
-
-Unless already validated by another system, implementations should start by reading the first 8 bytes, the magic header section section, and validating it.
+Unless already validated by another system, implementations should start by reading the first 8 bytes, the magic signature, and validate it.
 
 | Bytes | Description |
 | --- | --- |
 | 8 | "daicon00" magic prefix |
 
-This should match exactly. Future incompatible versions may change "00". For interoperability reasons, you should not change this header for your own format, instead use the type UUID in the format section.
+This should match exactly. Future incompatible versions may change "00". An implementation reading a different number there should reject the file as incompatible.
 
-### Format Section
+For interoperability reasons, you should not change this signature for your own format, instead use the type UUID in the format section.
+
+### Format
 
 | Bytes | Description |
 | --- | --- |
 | 16 | type UUID |
 | 2 | version major |
 | 2 | version minor |
-| 8 | interface table index |
 
-You can see the type UUID here as equivalent to an inner MIME-Type. Formats that use daicon containers have file extensions and MIME-Types of their own. Daicon containers are intended to be used as the base of another format.
-
-The interface table offset is used to find the specific location of the interface table. This allows updated interface tables to be gradually introduced without invalidating the entire file.
+The type UUID is equivalent to an inner MIME-Type. Formats that use daicon containers have file extensions and MIME-Types of their own, it is repeated here for validation, and for if this information is not otherwise available.
 
 ### Interface Table
 
@@ -105,14 +112,14 @@ Following this, you will find `count` amount of interfaces.
 | 16 | type UUID |
 | 2 | version major |
 | 2 | version minor |
-| 8 | offset |
-| 8 | size |
+| 8 | offset in bytes |
+| 8 | size in bytes |
 
 The offset and size describe the location of the interface in the file. Interface regions **MAY** overlap.
 
 > ⚠️ Always validate all offsets and sizes.
 
-Multiple entries with the same UUID are valid, as long as their *major* versions are different. Multiple entries with the same UUID *and* major version are not valid, and **MUST** be rejected by a parser implementation.
+Multiple entries with the same UUID are distinct, as long as their *major* versions are different. Multiple entries with the same UUID *and* major version are **not** distinct, and the parser **MUST** use the last one present in the table. This allows for atomic append-only updates to the table.
 
 Interfaces are arbitrary binary data, and how they are interpreted is decided by the specific format using daicon containers. Derived formats are encouraged to reuse standard interface specifications where possible.
 
