@@ -15,7 +15,7 @@ Daicon containers are designed, but not exclusively for, containing metaverse ob
 
 - Backwards and forwards compatibility. If the design of a format changes, or a new format comes in vogue, the interface system allows formats to adapt while still providing interfaces for older systems.
 - Easy to parse. Daicon containers are extremely easy to parse in any language, even without dynamic memory. The surface area of the standard is also intentionally very low, meaning no special cases or obscure extensions you need to support for full coverage.
-- Low overhead. A format based on daicon containers is just 68 bytes larger than the raw interface. This one bullet point alone is over two times larger.
+- Low overhead. A format based on daicon containers is just 76 bytes larger than the raw interface. This one bullet point alone is over two times larger.
 - Inner type metdata and versioning. Besides identifying and versioning interfaces, a format that uses daicon containers can also be uniquely identified by the header, including backwards and forwards compatibility for minor versions.
 - Direct addressing. Daicon containers do not require any special parsing or decompressing at a container level to access the inner data. This is delegated to the inner interfaces which may, in the case of "dacti packages" for example, decide to only do compression at a per-object level. This allows areas to be directly addressed through, for example, [HTTP Range Requests](https://developer.mozilla.org/en-US/docs/Web/HTTP/Range_requests).
 - Cache coherency. Daicon is designed to work well with CDN and edge caches. Derived formats can append additional data and update atomically without needing to invalidate the entire file.
@@ -64,7 +64,7 @@ Daicon containers are made up out of multiple sections.
 | --- | --- |
 | 8 | signature |
 | 20 | format |
-| 4 + (N * 36) | interface table |
+| 12 + (N * 36) | interface table |
 | ... | inner data |
 
 ### Signature
@@ -95,6 +95,7 @@ A short header defines how many interfaces will be described.
 
 | Bytes | Description |
 | --- | --- |
+| 8 | extension |
 | 4 | count |
 
 Following this, you will find `count` amount of interfaces.
@@ -110,6 +111,8 @@ Following this, you will find `count` amount of interfaces.
 The offset and size describe the location of the interface in the file. Interface regions **MAY** overlap.
 
 > ⚠️ Always validate all offsets and sizes.
+| 8 | extension |
+| 4 | extension count |
 
 Interfaces are arbitrary binary data, and how they are interpreted is decided by the specific format using daicon containers. Derived formats are encouraged to reuse standard interface specifications where possible.
 
@@ -117,9 +120,15 @@ Interfaces are arbitrary binary data, and how they are interpreted is decided by
 
 #### Duplicates
 
-Multiple entries with the same UUID are distinct, as long as their *major* versions are different. Multiple entries with the same UUID *and* major version are not valid, and the parser **MUST** reject this.
+Multiple entries with the same UUID are distinct, as long as their *major* versions are different. Multiple entries with the same UUID *and* major version are not valid, and the reader **MUST** reject this.
 
 This **SHOULD** enforce that there is no situation where continuing to read a table will change the interfaces already found, and an implementation can decide to early-bail if it has found the interfaces it needs.
+
+#### Extension
+
+If not null, the extension descibes the location of another interface table. This is to allow the recommendations in "CDN Cache Coherency" and "Reducing Round-Trips" to be followed without limiting extensibility.
+
+A reader **MAY** decide not to read the extension table if it has already read the interfaces required by the format. If this is not the case, a reader **MUST** follow the extension, or inform the caller it must do so.
 
 ### Inner Data
 
@@ -129,33 +138,23 @@ After these sections, the rest of the file contains arbitrary data. For example:
 - Data regions indirectly referenced by interfaces
 - Extended data used by future versions of this specification
 
-## Required Standard Interfaces
+## Examples
 
-> 🚧 Required standard interfaces interfaces are a dubious feature, and only included as of now for feedback.
+Examples of how to define format and interface specifications on top of dacti.
 
-Interfaces are intended to be defined by derived format specifications, but some daicon features are implemented through interfaces and *must* be supported by a reader.
+> ⚠️ These are not standardized specifications, do not use these.
 
-They are not required to be present in a daicon file, and writers are not required to support them.
+### Interface Specification
 
-### Table Extension Interface
-
-> 🚧 Table extensions are a dubious feature, and only included as of now for feedback.
-
-The recommendations set by "CDN Cache Coherency" and "Reducing Round-Trips" could result in a daicon container running out of 'slots' for interfaces even when more are needed. To both prevent this in the first place, and degrade rather than fail in the worst case, you can use table extensions.
+This example interface specification describes the presence of unstructured generic text data.
 
 | Key | Value |
 | --- | --- |
-| Name | Table Extension |
+| Name | Text Example |
 | Version | 0.1.0-draft 🚧 |
 | UUID | 37cb72a4-caab-440c-8b7c-869019ed348e |
 
-Table extensions have the same format as the interface table, without the "count" header. The count should be derived from the size in bytes divided by the size per table entry.
-
-Table extensions can be recursive. Duplicates and loops are recommended against, but this is not enforced by this specification. A reader should track which tables it has already read, and **MUST NOT** follow duplicates.
-
-Readers are not required to follow extensions if found interfaces match the requirements for "early-bail" described in the interface table section. If found interfaces do not match these requirements, a reader **MUST** follow extensions, or direct the caller to fetch additional data to do so.
-
-You can decide to relocate the table entirely by having only one entry in the main table, containing this interface.
+The contents of the interface region is UTF-8 text data. Null characters should be considered invalid data and an implementation **MUST** reject these.
 
 ## Glossary
 
