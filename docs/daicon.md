@@ -111,11 +111,15 @@ The offset and size describe the location of the interface in the file. Interfac
 
 > ⚠️ Always validate all offsets and sizes.
 
-Multiple entries with the same UUID are distinct, as long as their *major* versions are different. Multiple entries with the same UUID *and* major version are **not** distinct, and the parser **MUST** use the last one present in the table. This allows for atomic append-only updates to the table.
-
 Interfaces are arbitrary binary data, and how they are interpreted is decided by the specific format using daicon containers. Derived formats are encouraged to reuse standard interface specifications where possible.
 
 > ⚠️ Interfaces are not required to pack tightly. A file can, and commonly will, contain much more data than just the interface data regions.
+
+#### Duplicates
+
+Multiple entries with the same UUID are distinct, as long as their *major* versions are different. Multiple entries with the same UUID *and* major version are not valid, and the parser **MUST** reject this.
+
+This **SHOULD** enforce that there is no situation where continuing to read a table will change the interfaces already found, and an implementation can decide to early-bail if it has found the interfaces it needs.
 
 ### Inner Data
 
@@ -124,6 +128,34 @@ After these sections, the rest of the file contains arbitrary data. For example:
 - Interface regions, containing the interface implementations
 - Data regions indirectly referenced by interfaces
 - Extended data used by future versions of this specification
+
+## Required Standard Interfaces
+
+> 🚧 Required standard interfaces interfaces are a dubious feature, and only included as of now for feedback.
+
+Interfaces are intended to be defined by derived format specifications, but some daicon features are implemented through interfaces and *must* be supported by a reader.
+
+They are not required to be present in a daicon file, and writers are not required to support them.
+
+### Table Extension Interface
+
+> 🚧 Table extensions are a dubious feature, and only included as of now for feedback.
+
+The recommendations set by "CDN Cache Coherency" and "Reducing Round-Trips" could result in a daicon container running out of 'slots' for interfaces even when more are needed. To both prevent this in the first place, and degrade rather than fail in the worst case, you can use table extensions.
+
+| Key | Value |
+| --- | --- |
+| Name | Table Extension |
+| Version | 0.1.0-draft 🚧 |
+| UUID | 37cb72a4-caab-440c-8b7c-869019ed348e |
+
+Table extensions have the same format as the interface table, without the "count" header. The count should be derived from the size in bytes divided by the size per table entry.
+
+Table extensions can be recursive. Duplicates and loops are recommended against, but this is not enforced by this specification. A reader should track which tables it has already read, and **MUST NOT** follow duplicates.
+
+Readers are not required to follow extensions if found interfaces match the requirements for "early-bail" described in the interface table section. If found interfaces do not match these requirements, a reader **MUST** follow extensions, or direct the caller to fetch additional data to do so.
+
+You can decide to relocate the table entirely by having only one entry in the main table, containing this interface.
 
 ## Glossary
 
