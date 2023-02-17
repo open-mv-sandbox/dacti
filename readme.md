@@ -1,8 +1,8 @@
-# Dacti Object Format
+# Dacti Project
 
 This repository is a sandbox workspace for building the "dacti" metaverse object format.
 
-Dacti itself refers to the "container" and "self-descriptive object" specification.
+Dacti itself refers to the "dacti package" and "dacti object" specification.
 It is a work-in-progress object format for describing the visual representation of data, and
 attaching functionality to that data, in an and extensible way that's easy to support at various
 levels.
@@ -12,10 +12,10 @@ For example, when stored on a file system, or sent to applications as a file.
 The object specifications can be used both to describe the entirety of an object, and to describe a
 subset of an object, or a replicated mirror of an object for a client to display.
 
-The dacti container speficiation can bundle a collection of data, which can be indexed and
+The dacti package speficiation can bundle a collection of data, which can be indexed and
 subdivided with simple offsets.
-This container allows you to bundle an object specification together with its data in one file, to
-store and transfer objects in a self-contained way.
+This package format allows you to bundle an object specification together with its data in one
+file, to store and transfer objects in a self-contained way.
 As well, the offset indexes allow you to bundle a large collection of objects and data in a file,
 that can be fetched sparsely using [HTTP range requests](https://developer.mozilla.org/en-US/docs/Web/HTTP/Range_requests).
 
@@ -24,6 +24,12 @@ enduring in space-time.
 
 Everything in this workspace is not ready for production use.
 All APIs, file formats, and other details are subject to change at any time.
+
+## Daicon
+
+Daicon containers are a wrapping file format, made to make file self-description and versioning easier. They let a file format describe itself using a UUID and semantic version. Additionally, they provide a flexible way to define named and versioned regions of data in the file, called "interfaces".
+
+For more information, see the [draft daicon specification](docs/daicon.md).
 
 ## Dacti viewer
 

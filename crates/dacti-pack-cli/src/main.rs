@@ -1,8 +1,9 @@
-use std::{fs::File, io::Write, num::NonZeroU64, path::Path};
+use std::{fs::OpenOptions, io::Write, num::NonZeroU64, path::Path};
 
-use anyhow::Error;
+use anyhow::{Context, Error};
 use bytemuck::{bytes_of, Pod, Zeroable};
 use clap::Parser;
+use daicon::{FormatHeader, Version};
 use uuid::uuid;
 
 fn main() {
@@ -27,17 +28,21 @@ struct Args {}
 
 fn build_pack() -> Result<(), Error> {
     let target = Path::new("./packages/dacti-example-web/public/viewer-builtins.dacti-pack");
-    let mut file = File::create(target)?;
+
+    let mut file = OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .create(true)
+        .open(target)
+        .context("failed to open target package for writing")?;
     file.write_all(daicon::SIGNATURE)?;
 
     // Write the format header
-    let format = FormatHeader {
-        // dacti-pack format
-        type_uuid: uuid!("5f0f7929-7577-4be5-8bb5-4a63199b6722").to_bytes_le(),
-        version_major: 0,
-        version_minor: 0,
-    };
-    file.write_all(bytes_of(&format))?;
+    let format = FormatHeader::new(
+        uuid!("5f0f7929-7577-4be5-8bb5-4a63199b6722"),
+        Version::new(0, 0),
+    );
+    format.write_with_signature(&mut file)?;
 
     // Write the interface table
     let header = InterfaceTableHeader {
@@ -58,14 +63,6 @@ fn build_pack() -> Result<(), Error> {
     file.write_all(bytes_of(&header))?;
 
     Ok(())
-}
-
-#[derive(Pod, Zeroable, Clone, Copy)]
-#[repr(C)]
-struct FormatHeader {
-    type_uuid: [u8; 16],
-    version_major: u16,
-    version_minor: u16,
 }
 
 #[derive(Pod, Zeroable, Clone, Copy)]
