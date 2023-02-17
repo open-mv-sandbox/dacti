@@ -1,1 +1,1 @@
-cargo run -p dacti-pack-cli
+cargo run -p ptero-cli

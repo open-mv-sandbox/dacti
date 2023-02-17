@@ -263,16 +263,6 @@ name = "dacti-pack"
 version = "0.1.0"
 
 [[package]]
-name = "dacti-pack-cli"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "clap",
- "daicon",
- "uuid",
-]
-
-[[package]]
 name = "dacti-viewer"
 version = "0.1.0"
 
@@ -748,6 +738,16 @@ name = "profiling"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "74605f360ce573babfe43964cbe520294dcb081afbf8c108fc6e23036b4da2df"
+
+[[package]]
+name = "ptero-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "daicon",
+ "uuid",
+]
 
 [[package]]
 name = "quote"
