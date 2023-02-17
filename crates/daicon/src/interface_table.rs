@@ -6,6 +6,7 @@ use uuid::Uuid;
 
 use crate::Version;
 
+#[repr(transparent)]
 pub struct InterfaceTableHeader(InterfaceTableHeaderRaw);
 
 #[repr(C)]
@@ -53,6 +54,7 @@ impl InterfaceTableHeader {
     }
 }
 
+#[repr(transparent)]
 pub struct InterfaceEntry(InterfaceEntryRaw);
 
 #[repr(C)]
