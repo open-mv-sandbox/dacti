@@ -9,7 +9,6 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow.workspace = true
-bytemuck = { workspace = true, features = ["derive"] }
 clap = { workspace = true, features = ["derive"] }
 uuid.workspace = true
 daicon.workspace = true

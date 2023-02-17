@@ -106,7 +106,7 @@ The interface table starts with a header, describing metadata for parsing this s
 | Bytes | Description |
 | --- | --- |
 | 8 | region offset |
-| 8 | extension |
+| 8 | extension offset |
 | 4 | reserved (currently padding, write zero) |
 | 4 | count |
 
