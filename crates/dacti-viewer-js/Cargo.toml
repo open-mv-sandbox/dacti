@@ -7,21 +7,21 @@ edition = "2021"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-console_error_panic_hook = "0.1.6"
-js-sys = "0.3.61"
-raw-window-handle = "0.5.0"
-tracing = "0.1.37"
-tracing-wasm = "0.2.1"
-wasm-bindgen = "0.2.63"
-wasm-bindgen-futures = "0.4.34"
+console_error_panic_hook.workspace = true
+js-sys.workspace = true
+raw-window-handle.workspace = true
+tracing.workspace = true
+tracing-wasm.workspace = true
+wasm-bindgen.workspace = true
+wasm-bindgen-futures.workspace = true
 wgpu.workspace = true
-dacti-viewer = { path = "../dacti-viewer" }
+dacti-viewer.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wgpu = { workspace = true, features = ["webgl"] }
 
 [dependencies.web-sys]
-version = "0.3.61"
+workspace = true
 features = [
     "DomStringMap",
     "HtmlElement",

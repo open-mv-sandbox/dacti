@@ -15,7 +15,7 @@ Daicon containers are designed, but not exclusively for, containing metaverse ob
 
 - Backwards and forwards compatibility. If the design of a format changes, or a new format comes in vogue, the interface system allows formats to adapt while still providing interfaces for older systems.
 - Easy to parse. Daicon containers are extremely easy to parse in any language, even without dynamic memory. The surface area of the standard is also intentionally very low, meaning no special cases or obscure extensions you need to support for full coverage.
-- Low overhead. A format based on daicon containers is just 76 bytes larger than the raw interface. This one bullet point alone is over two times larger.
+- Low overhead. A format based on daicon containers is just 80 bytes larger than the raw interface. This one bullet point alone is already a bit over two times that.
 - Inner type metdata and versioning. Besides identifying and versioning interfaces, a format that uses daicon containers can also be uniquely identified by the header, including backwards and forwards compatibility for minor versions.
 - Direct addressing. Daicon containers do not require any special parsing or decompressing at a container level to access the inner data. This is delegated to the inner interfaces which may, in the case of "dacti packages" for example, decide to only do compression at a per-object level. This allows areas to be directly addressed through, for example, [HTTP Range Requests](https://developer.mozilla.org/en-US/docs/Web/HTTP/Range_requests).
 - Cache coherency. Daicon is designed to work well with CDN and edge caches. Derived formats can append additional data and update atomically without needing to invalidate the entire file.
@@ -65,8 +65,8 @@ Daicon containers are made up out of multiple sections.
 | Bytes | Description |
 | --- | --- |
 | 8 | signature |
-| 20 | format |
-| 20 + (N * 28) | interface table |
+| 20 | format header |
+| 24 + (N * 28) | interface table |
 | ... | inner data |
 
 #### Endianness
@@ -89,7 +89,7 @@ For interoperability reasons, you should not change this signature for your own 
 
 > 🚧 If daicon is standardized and the specification reaches 1.0 drafts, this magic prefix will be updated to enforce compatibility.
 
-### Format
+### Format Header
 
 | Bytes | Description |
 | --- | --- |
@@ -107,6 +107,7 @@ The interface table starts with a header, describing metadata for parsing this s
 | --- | --- |
 | 8 | region offset |
 | 8 | extension |
+| 4 | reserved (currently padding, write zero) |
 | 4 | count |
 
 Following this, you will find `count` amount of interfaces.

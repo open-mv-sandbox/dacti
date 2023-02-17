@@ -1,1 +1,1 @@
-cargo run -p dacti-pack-cli -- --help
+cargo run -p dacti-pack-cli
