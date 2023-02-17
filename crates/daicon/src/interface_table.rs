@@ -1,7 +1,6 @@
-use std::{io::Write, num::NonZeroU64};
+use std::num::NonZeroU64;
 
-use anyhow::Error;
-use bytemuck::{bytes_of, Pod, Zeroable};
+use bytemuck::{bytes_of, from_bytes, Pod, TransparentWrapper, Zeroable};
 use uuid::Uuid;
 
 use crate::Version;
@@ -18,10 +17,16 @@ struct InterfaceTableHeaderRaw {
     count: u32,
 }
 
+unsafe impl TransparentWrapper<InterfaceTableHeaderRaw> for InterfaceTableHeader {}
+
 impl InterfaceTableHeader {
     pub fn new() -> Self {
         let value = Self(Zeroable::zeroed());
         value
+    }
+
+    pub fn from_bytes(bytes: &[u8]) -> &Self {
+        Self::wrap_ref(from_bytes(bytes))
     }
 
     pub fn region_offset(&self) -> u64 {
@@ -48,9 +53,8 @@ impl InterfaceTableHeader {
         self.0.count = value;
     }
 
-    pub fn write_to<W: Write>(&self, writer: &mut W) -> Result<(), Error> {
-        writer.write_all(bytes_of(&self.0))?;
-        Ok(())
+    pub fn as_bytes(&self) -> &[u8] {
+        bytes_of(&self.0)
     }
 }
 
@@ -66,12 +70,18 @@ struct InterfaceEntryRaw {
     data: [u8; 8],
 }
 
+unsafe impl TransparentWrapper<InterfaceEntryRaw> for InterfaceEntry {}
+
 impl InterfaceEntry {
     pub fn new(type_uuid: Uuid, version: Version) -> Self {
         let mut value = InterfaceEntry(Zeroable::zeroed());
         value.set_type_uuid(type_uuid);
         value.set_version(version);
         value
+    }
+
+    pub fn from_bytes(bytes: &[u8]) -> &Self {
+        Self::wrap_ref(from_bytes(bytes))
     }
 
     pub fn type_uuid(&self) -> Uuid {
@@ -102,8 +112,7 @@ impl InterfaceEntry {
         self.0.data = data;
     }
 
-    pub fn write_to<W: Write>(&self, writer: &mut W) -> Result<(), Error> {
-        writer.write_all(bytes_of(&self.0))?;
-        Ok(())
+    pub fn as_bytes(&self) -> &[u8] {
+        bytes_of(&self.0)
     }
 }

@@ -1,7 +1,7 @@
-use std::{fs::OpenOptions, path::Path};
+use std::{fs::OpenOptions, io::Write, path::Path};
 
 use anyhow::{Context, Error};
-use clap::{Args};
+use clap::Args;
 use daicon::{FormatHeader, InterfaceEntry, InterfaceTableHeader, Version};
 use uuid::uuid;
 
@@ -29,18 +29,19 @@ pub fn run(command: CreateCommand) -> Result<(), Error> {
         uuid!("5f0f7929-7577-4be5-8bb5-4a63199b6722"),
         Version::new(0, 0),
     );
-    format.write_with_signature_to(&mut file)?;
+    file.write_all(&daicon::SIGNATURE)?;
+    file.write_all(format.as_bytes())?;
 
     // Write the interface table
     let mut header = InterfaceTableHeader::new();
     header.set_count(1);
-    header.write_to(&mut file)?;
+    file.write_all(header.as_bytes())?;
 
     let entry = InterfaceEntry::new(
         uuid!("2c5e4717-b715-429b-85cd-d320d242547a"),
         Version::new(0, 0),
     );
-    entry.write_to(&mut file)?;
+    file.write_all(entry.as_bytes())?;
 
     Ok(())
 }

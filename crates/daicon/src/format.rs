@@ -1,10 +1,7 @@
-use std::io::Write;
-
-use anyhow::Error;
-use bytemuck::{bytes_of, Pod, Zeroable};
+use bytemuck::{bytes_of, from_bytes, Pod, TransparentWrapper, Zeroable};
 use uuid::Uuid;
 
-use crate::{Version, SIGNATURE};
+use crate::Version;
 
 #[repr(transparent)]
 pub struct FormatHeader(FormatHeaderRaw);
@@ -17,12 +14,18 @@ struct FormatHeaderRaw {
     version_minor: u16,
 }
 
+unsafe impl TransparentWrapper<FormatHeaderRaw> for FormatHeader {}
+
 impl FormatHeader {
     pub fn new(type_uuid: Uuid, version: Version) -> Self {
         let mut value = Self(Zeroable::zeroed());
         value.set_type_uuid(type_uuid);
         value.set_version(version);
         value
+    }
+
+    pub fn from_bytes(bytes: &[u8]) -> &Self {
+        Self::wrap_ref(from_bytes(bytes))
     }
 
     pub fn type_uuid(&self) -> Uuid {
@@ -45,9 +48,7 @@ impl FormatHeader {
         self.0.version_minor = value.minor.to_le();
     }
 
-    pub fn write_with_signature_to<W: Write>(&self, writer: &mut W) -> Result<(), Error> {
-        writer.write_all(&SIGNATURE)?;
-        writer.write_all(bytes_of(&self.0))?;
-        Ok(())
+    pub fn as_bytes(&self) -> &[u8] {
+        bytes_of(&self.0)
     }
 }
