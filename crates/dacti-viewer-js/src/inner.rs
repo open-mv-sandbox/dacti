@@ -43,9 +43,10 @@ impl ViewerInner {
             .unwrap();
 
         // Load the shaders from disk
+        let shader_str = include_str!("../../../data/shader.wgsl");
         let shader = device.create_shader_module(ShaderModuleDescriptor {
             label: None,
-            source: ShaderSource::Wgsl(Cow::Borrowed(include_str!("./shaders/shader.wgsl"))),
+            source: ShaderSource::Wgsl(Cow::Borrowed(shader_str)),
         });
 
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
@@ -99,10 +100,7 @@ impl ViewerInner {
     pub fn tick(&self) {
         event!(Level::INFO, "viewer tick");
 
-        let frame = self
-            .surface
-            .get_current_texture()
-            .unwrap();
+        let frame = self.surface.get_current_texture().unwrap();
         let view = frame.texture.create_view(&TextureViewDescriptor::default());
 
         let mut encoder = self

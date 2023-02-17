@@ -28,7 +28,7 @@ Daicon is intended to be used as the basis for other file formats. This allows a
 
 When you use daicon containers for your format, you need to randomly generate a UUID to identify your format with. It is recommended that you pick a unique extension for your file.
 
-You should then define which interfaces, and their minimum versions, your format **requires**. These interfaces can be re-used between different formats, in fact, the use of standard interfaces is recommended.
+You should then define which interfaces, and their minimum versions, your format **requires**. These interfaces can be re-used between different formats, in fact, standardizing interfaces separately is recommended.
 
 ### Updating a Format
 
@@ -38,12 +38,6 @@ For example, this means you can increase the minimum minor version of an interfa
 
 To allow this method of backwards compatibility, you are allowed to include multiple major versions of interfaces. If you find yourself needing to include multiple *minor* versions, you are likely not correctly following semantic versioning.
 
-### CDN Cache Coherency
-
-Daicon containers are designed for efficient cache coherency on CDNs and edge caches. To achieve this they allow for derived formats that use daicon containers to include padding for append-only updates.
-
-If your format will be used for this, you can use the "offset" and "size" values in the index table as atomic switches, after appending or relocating data and validating all caches have been updated. You are recommended to define padding data in your format's specification to make this possible.
-
 ### Reducing Round-Trips
 
 If your format will be fetched *partially* from a server, and then indexed using ranges, your format specification should include recommendations to reduce necessary round-trips.
@@ -52,9 +46,17 @@ For example, you can recommend (or even require) an index interface describing r
 
 Not all interfaces have to fall in this region, only those that need this 'fast-path'. You are recommended to specify that clients should degrade performance rather than fail if the included interfaces' data exceeds the specified region.
 
-If you implement this, you are recommended to pad the additional space in this region, reserving it, to allow the file to be updated without a full cache flush. You should also pad the interface table for the same reason.
+### CDN Cache Coherency
 
-You are not required to perform this padding, and in fact, if your file will not be updated like this you are recommended to *not* do it to avoid unnecessary overhead.
+Daicon containers are designed for efficient cache coherency on CDNs and edge caches. To achieve this, daicon's interface system can be updated atomically.
+
+You can use the values in the interface table as atomic switches, after appending binary data, repointing locations, and validating all caches have been updated. The interface table itself also has "count" and "extension", which too can be atomically updated after verifying a cache flush.
+
+If your format needs this functionality in combination with "Reducing Round-Trips", you are recommended to specify padding in the pre-fetch region, reserving it, to allow the file to be updated without a full cache flush. You should also pad the interface table for the same reason.
+
+### Specifying Append-Only
+
+Binary Data previously written should **never** move or change its value to ensure stale client table requests do not retrieve corrupt data from an update. Table pointer to offsets may be updated as necessary. If a file has stale or unused sections, a new file should be created with the unnecessary data culled out.
 
 ## Daicon Format
 
@@ -64,8 +66,12 @@ Daicon containers are made up out of multiple sections.
 | --- | --- |
 | 8 | signature |
 | 20 | format |
-| 12 + (N * 36) | interface table |
+| 20 + (N * 28) | interface table |
 | ... | inner data |
+
+#### Endianness
+
+All values in the daicon specification use little-endian byte ordering. Interfaces and formats may specify different endianness in interface data or inner data.
 
 ### Signature
 
@@ -73,11 +79,15 @@ Unless already validated by another system, implementations should start by read
 
 | Bytes | Description |
 | --- | --- |
-| 8 | "daicon00" magic prefix |
+| 8 | signature, 0xFF followed by "daicon0" |
 
-This should match exactly. Future incompatible versions may change "00". An implementation reading a different number there should reject the file as incompatible.
+This should match exactly. Future incompatible versions may change "0". An implementation reading a different number there should reject the file as incompatible.
 
 For interoperability reasons, you should not change this signature for your own format, instead use the type UUID in the format section.
+
+> This signature starts with a non-printable character, to aide in auto-detecting daicon files as non-text files.
+
+> 🚧 If daicon is standardized and the specification reaches 1.0 drafts, this magic prefix will be updated to enforce compatibility.
 
 ### Format
 
@@ -91,10 +101,11 @@ The type UUID is equivalent to an inner MIME-Type. Formats that use daicon conta
 
 ### Interface Table
 
-A short header defines how many interfaces will be described.
+The interface table starts with a header, describing metadata for parsing this set of interfaces, and a pointer to the next set.
 
 | Bytes | Description |
 | --- | --- |
+| 8 | region offset |
 | 8 | extension |
 | 4 | count |
 
@@ -105,24 +116,23 @@ Following this, you will find `count` amount of interfaces.
 | 16 | type UUID |
 | 2 | version major |
 | 2 | version minor |
-| 8 | offset in bytes |
-| 8 | size in bytes |
+| 8 | data (typically a region) |
 
-The offset and size describe the location of the interface in the file. Interface regions **MAY** overlap.
+Interfaces define the format of their data in the table themselves, but will typically specify a "Region", defined by an offset and size, both 4 bytes long. If specifying an offset or a region, those should be offset by the "region offset" value in the table header. When the data specifies a region, these **MAY** overlap.
 
 > ⚠️ Always validate all offsets and sizes.
-| 8 | extension |
-| 4 | extension count |
 
-Interfaces are arbitrary binary data, and how they are interpreted is decided by the specific format using daicon containers. Derived formats are encouraged to reuse standard interface specifications where possible.
+Regions are arbitrary binary data, and how they are interpreted is decided by the specific format using daicon containers. Derived formats are encouraged to reuse standard interface specifications where possible.
 
-> ⚠️ Interfaces are not required to pack tightly. A file can, and commonly will, contain much more data than just the interface data regions.
+> ⚠️ Interface regions are not required to pack tightly. A file can, and commonly will, contain much more data than just the interface regions.
 
 #### Duplicates
 
-Multiple entries with the same UUID are distinct, as long as their *major* versions are different. Multiple entries with the same UUID *and* major version are not valid, and the reader **MUST** reject this.
+Multiple entries with the same UUID are distinct, as long as their *major* versions are different. Multiple entries with the same UUID *and* major version are not valid, and a reader **MUST** ignore duplicate entries later in the table.
 
-This **SHOULD** enforce that there is no situation where continuing to read a table will change the interfaces already found, and an implementation can decide to early-bail if it has found the interfaces it needs.
+This **MUST** enforce that there is no situation where continuing to read a table will change the interfaces already found. An implementation can decide to stop reading interfaces early, if it has found the interfaces it needs.
+
+A format **MAY** specify recommended interface ordering to aide in detecting the best interfaces available for a task.
 
 #### Extension
 
@@ -156,8 +166,9 @@ This example interface specification describes the presence of unstructured gene
 | Name | Text Example |
 | Version | 0.1.0-draft 🚧 |
 | UUID | 37cb72a4-caab-440c-8b7c-869019ed348e |
+| Table Data | Region |
 
-The contents of the interface region is UTF-8 text data. Null characters should be considered invalid data and an implementation **MUST** reject these.
+The contents of the interface region is UTF-8 text data. Null characters should be considered invalid data and an implementation **MUST** reject parsing the interface if the region contains these.
 
 ## Glossary
 
