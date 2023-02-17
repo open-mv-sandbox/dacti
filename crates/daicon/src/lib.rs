@@ -4,12 +4,12 @@
 //! validation where useful. In most cases, you should not use this library directly, but instead
 //! use a format-specific library that uses this library.
 //!
-//! This library does maintain endianness compatibility, while maintaing near-native performance
-//! on little-endian systems in release build mode.
+//! Endianness compatibility is maintained when setting and reading values, while maintaing near-
+//! native performance on little-endian systems in release build mode.
 //!
-//! Where possible, high-level types are `#[repr(transparent)]` to the low-level data of those
-//! types, and can be safely reinterpreted. Internally, this library uses bytemuck, but this is
-//! not exposed publically.
+//! Where possible, high-level wrappers are `#[repr(transparent)]` to the low-level data of those
+//! types, and can be reinterpreted. However, you should avoid doing this. Safe raw binary
+//! conversion can be done instead with `from_bytes`, `from_bytes_mut` and `to_bytes`.
 
 mod format;
 mod interface_table;
@@ -19,8 +19,12 @@ pub use self::{
     interface_table::{InterfaceEntry, InterfaceTableHeader},
 };
 
+/// Signature of a daicon file, should be inserted and validated at the top of a file.
 pub const SIGNATURE: &[u8] = b"\xFFdaicon0";
 
+/// Semantic version for formats and interfaces.
+///
+/// Only contains major and minor, see daicon spec for reasoning.
 #[derive(Eq, PartialEq, Copy, Clone)]
 pub struct Version {
     pub major: u16,

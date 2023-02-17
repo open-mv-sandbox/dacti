@@ -1,6 +1,6 @@
 use std::num::NonZeroU64;
 
-use bytemuck::{bytes_of, from_bytes, Pod, TransparentWrapper, Zeroable};
+use bytemuck::{bytes_of, from_bytes, from_bytes_mut, Pod, TransparentWrapper, Zeroable};
 use uuid::Uuid;
 
 use crate::Version;
@@ -27,6 +27,10 @@ impl InterfaceTableHeader {
 
     pub fn from_bytes(bytes: &[u8]) -> &Self {
         Self::wrap_ref(from_bytes(bytes))
+    }
+
+    pub fn from_bytes_mut(bytes: &mut [u8]) -> &Self {
+        Self::wrap_mut(from_bytes_mut(bytes))
     }
 
     pub fn region_offset(&self) -> u64 {
@@ -82,6 +86,10 @@ impl InterfaceEntry {
 
     pub fn from_bytes(bytes: &[u8]) -> &Self {
         Self::wrap_ref(from_bytes(bytes))
+    }
+
+    pub fn from_bytes_mut(bytes: &mut [u8]) -> &Self {
+        Self::wrap_mut(from_bytes_mut(bytes))
     }
 
     pub fn type_uuid(&self) -> Uuid {
