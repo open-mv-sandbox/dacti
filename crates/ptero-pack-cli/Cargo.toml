@@ -1,10 +1,10 @@
 [package]
-name = "ptero-cli"
+name = "ptero-pack-cli"
 version = "0.1.0"
 edition = "2021"
 
 [[bin]]
-name = "ptero"
+name = "ptero-pack"
 path = "src/main.rs"
 
 [dependencies]

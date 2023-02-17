@@ -31,6 +31,10 @@ Daicon containers are a wrapping file format, made to make file self-description
 
 For more information, see the [draft daicon specification](docs/daicon.md).
 
+## Pterodactil
+
+Pterodactil is a CLI toolkit for working with dacti formats.
+
 ## Dacti viewer
 
 To explore the development of this format, this repository contains a reference viewer
