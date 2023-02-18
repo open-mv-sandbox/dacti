@@ -12,4 +12,3 @@ The dacti format is built up from multiple smaller components. These components 
 The file formats use common daicon interfaces for interoperability.
 
 - [Dacti Data Index Interface](interfaces/data-index.md)
-- [Dacti Cross-Reference Interface](interfaces/cross-reference.md)

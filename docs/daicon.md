@@ -2,7 +2,7 @@
 
 > 🚧 *This is a working document, describing a work-in-progress format. Nothing described in this document should be seen as final. Features described in this document may not be implemented yet, or differ from as described.*
 
-Daicon containers are a wrapping file format, made to make file self-description and versioning easier. They let a file format describe itself using a UUID and semantic version. Additionally, they provide a flexible way to define named and versioned regions of data in the file, called "interfaces".
+Daicon containers are a wrapping file format, made to make file self-description and versioning easier. They let a file format describe its features using extendable and versioned "interfaces".
 
 | Key | Value |
 | --- | --- |
@@ -11,12 +11,12 @@ Daicon containers are a wrapping file format, made to make file self-description
 
 ## Motivation
 
-Daicon containers are designed, but not exclusively for, containing metaverse objects and object data in a way that allows flexible interoperability and direct addressing. This use case presents a few requirements that many other formats don't provide:
+Daicon containers are designed, but not exclusively for, metaverse objects, and metaverse data packages. This use case presents a many specific requirements that many other formats don't provide:
 
 - Backwards and forwards compatibility. If the design of a format changes, or a new format comes in vogue, the interface system allows formats to adapt while still providing interfaces for older systems.
+- Modularity and extendibility. Superset features or metadata can be added to existing formats, without requiring central coordination. This allows for new format features to be tested easily, and for adding information only relevant for one specific case, without complicating a central format specification.
 - Easy to parse. Daicon containers are extremely easy to parse in any language, even without dynamic memory. The surface area of the standard is also intentionally very low, meaning no special cases or obscure extensions you need to support for full coverage.
-- Low overhead. A format based on daicon containers is just 80 bytes larger than the raw interface. This one bullet point alone is already a bit over two times that.
-- Inner type metdata and versioning. Besides identifying and versioning interfaces, a format that uses daicon containers can also be uniquely identified by the header, including backwards and forwards compatibility for minor versions.
+- Low overhead. A format based on daicon containers is just 60 bytes larger than the raw interface. This one bullet point is already over two times that.
 - Direct addressing. Daicon containers do not require any special parsing or decompressing at a container level to access the inner data. This is delegated to the inner interfaces which may, in the case of "dacti packages" for example, decide to only do compression at a per-object level. This allows areas to be directly addressed through, for example, [HTTP Range Requests](https://developer.mozilla.org/en-US/docs/Web/HTTP/Range_requests).
 - Cache coherency. Daicon is designed to work well with CDN and edge caches. Derived formats can append additional data and update atomically without needing to invalidate the entire file.
 
@@ -40,6 +40,8 @@ To allow this method of backwards compatibility, you are allowed to include mult
 
 ### Reducing Round-Trips
 
+> 🚧 This is pending to be moved to a separate optional superset specification.
+
 If your format will be fetched *partially* from a server, and then indexed using ranges, your format specification should include recommendations to reduce necessary round-trips.
 
 For example, you can recommend (or even require) an index interface describing regions contained in your file to exist within the first 64kb. This would allow a client aware of your format to always fetch the full first 64kb and not need additional round-trips to the server.
@@ -48,6 +50,8 @@ Not all interfaces have to fall in this region, only those that need this 'fast-
 
 ### CDN Cache Coherency
 
+> 🚧 This is pending to be moved to a separate optional superset specification.
+
 Daicon containers are designed for efficient cache coherency on CDNs and edge caches. To achieve this, daicon's interface system can be updated atomically.
 
 You can use the values in the interface table as atomic switches, after appending binary data, repointing locations, and validating all caches have been updated. The interface table itself also has "count" and "extension", which too can be atomically updated after verifying a cache flush.
@@ -55,6 +59,8 @@ You can use the values in the interface table as atomic switches, after appendin
 If your format needs this functionality in combination with "Reducing Round-Trips", you are recommended to specify padding in the pre-fetch region, reserving it, to allow the file to be updated without a full cache flush. You should also pad the interface table for the same reason.
 
 ### Specifying Append-Only
+
+> 🚧 This is pending to be moved to a separate optional superset specification.
 
 Binary Data previously written should **never** move or change its value to ensure stale client table requests do not retrieve corrupt data from an update. Table pointer to offsets may be updated as necessary. If a file has stale or unused sections, a new file should be created with the unnecessary data culled out.
 
@@ -65,7 +71,6 @@ Daicon containers are made up out of multiple sections.
 | Bytes | Description |
 | --- | --- |
 | 8 | signature |
-| 20 | format header |
 | 24 + (N * 28) | interface table |
 | ... | inner data |
 
@@ -89,26 +94,16 @@ For interoperability reasons, you should not change this signature for your own 
 
 > 🚧 If daicon is standardized and the specification reaches 1.0 drafts, this magic prefix will be updated to enforce compatibility.
 
-### Format Header
-
-| Bytes | Description |
-| --- | --- |
-| 16 | type UUID |
-| 2 | version major |
-| 2 | version minor |
-
-The type UUID is equivalent to an inner MIME-Type. Formats that use daicon containers have file extensions and MIME-Types of their own, it is repeated here for validation, and for if this information is not otherwise available.
-
 ### Interface Table
 
 The interface table starts with a header, describing metadata for parsing this set of interfaces, and a pointer to the next set.
 
 | Bytes | Description |
 | --- | --- |
-| 8 | region offset |
 | 8 | extension offset |
-| 4 | reserved (currently padding, write zero) |
+| 4 | extension count |
 | 4 | count |
+| 8 | region offset |
 
 Following this, you will find `count` amount of interfaces.
 
@@ -139,6 +134,8 @@ A format **MAY** specify recommended interface ordering to aide in detecting the
 
 If not null, the extension descibes the location of another interface table. This is to allow the recommendations in "CDN Cache Coherency" and "Reducing Round-Trips" to be followed without limiting extensibility.
 
+The extension count hints how many interfaces are present at that location for efficiently pre-fetching the entire table and not just the header, or a guess.
+
 A reader **MAY** decide not to read the extension table if it has already read the interfaces required by the format. If this is not the case, a reader **MUST** follow the extension, or inform the caller it must do so.
 
 A reader **MUST** track tables already read, and ignore loops. A reader **MAY** raise a debugging warning when this is encountered.
@@ -154,7 +151,7 @@ After these sections, the rest of the file contains arbitrary data. For example:
 
 ## Examples
 
-Examples of how to define format and interface specifications on top of dacti.
+Examples of how to define format and interface specifications on top of daicon.
 
 > ⚠️ These are not standardized specifications, do not use these.
 

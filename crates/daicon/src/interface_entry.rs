@@ -4,21 +4,11 @@ use uuid::Uuid;
 use crate::Version;
 
 #[repr(transparent)]
-pub struct FormatHeader(FormatHeaderRaw);
+pub struct InterfaceEntry(InterfaceEntryRaw);
 
-#[repr(C)]
-#[derive(Pod, Zeroable, Clone, Copy)]
-struct FormatHeaderRaw {
-    type_uuid: [u8; 16],
-    version_major: u16,
-    version_minor: u16,
-}
-
-unsafe impl TransparentWrapper<FormatHeaderRaw> for FormatHeader {}
-
-impl FormatHeader {
+impl InterfaceEntry {
     pub fn new(type_uuid: Uuid, version: Version) -> Self {
-        let mut value = Self(Zeroable::zeroed());
+        let mut value = InterfaceEntry(Zeroable::zeroed());
         value.set_type_uuid(type_uuid);
         value.set_version(version);
         value
@@ -52,7 +42,26 @@ impl FormatHeader {
         self.0.version_minor = value.minor.to_le();
     }
 
+    pub fn data(&mut self) -> [u8; 8] {
+        self.0.data
+    }
+
+    pub fn set_data(&mut self, data: [u8; 8]) {
+        self.0.data = data;
+    }
+
     pub fn as_bytes(&self) -> &[u8] {
         bytes_of(&self.0)
     }
 }
+
+#[repr(C)]
+#[derive(Pod, Zeroable, Clone, Copy)]
+struct InterfaceEntryRaw {
+    type_uuid: [u8; 16],
+    version_major: u16,
+    version_minor: u16,
+    data: [u8; 8],
+}
+
+unsafe impl TransparentWrapper<InterfaceEntryRaw> for InterfaceEntry {}

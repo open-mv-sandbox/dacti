@@ -2,7 +2,7 @@ use std::{fs::OpenOptions, io::Write, path::Path};
 
 use anyhow::{Context, Error};
 use clap::Args;
-use daicon::{FormatHeader, InterfaceEntry, InterfaceTableHeader, Version};
+use daicon::{InterfaceEntry, InterfaceTableHeader, Version};
 use uuid::uuid;
 
 #[derive(Args, Debug)]
@@ -24,13 +24,8 @@ pub fn run(command: CreateCommand) -> Result<(), Error> {
         .open(package)
         .context("failed to open target package for writing")?;
 
-    // Write the format header
-    let format = FormatHeader::new(
-        uuid!("5f0f7929-7577-4be5-8bb5-4a63199b6722"),
-        Version::new(0, 0),
-    );
+    // Write the signature
     file.write_all(&daicon::SIGNATURE)?;
-    file.write_all(format.as_bytes())?;
 
     // Write the interface table
     let mut header = InterfaceTableHeader::new();
