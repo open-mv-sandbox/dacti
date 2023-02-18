@@ -2,11 +2,11 @@ use bytemuck::{bytes_of, from_bytes, from_bytes_mut, Pod, TransparentWrapper, Ze
 use uuid::Uuid;
 
 #[repr(transparent)]
-pub struct InterfaceEntry(InterfaceEntryRaw);
+pub struct ComponentEntry(ComponentEntryRaw);
 
-impl InterfaceEntry {
+impl ComponentEntry {
     pub fn new(type_uuid: Uuid) -> Self {
-        let mut value = InterfaceEntry(Zeroable::zeroed());
+        let mut value = ComponentEntry(Zeroable::zeroed());
         value.set_type_uuid(type_uuid);
         value
     }
@@ -42,9 +42,9 @@ impl InterfaceEntry {
 
 #[repr(C)]
 #[derive(Pod, Zeroable, Clone, Copy)]
-struct InterfaceEntryRaw {
+struct ComponentEntryRaw {
     type_uuid: [u8; 16],
     data: [u8; 8],
 }
 
-unsafe impl TransparentWrapper<InterfaceEntryRaw> for InterfaceEntry {}
+unsafe impl TransparentWrapper<ComponentEntryRaw> for ComponentEntry {}

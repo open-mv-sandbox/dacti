@@ -27,7 +27,7 @@ All APIs, file formats, and other details are subject to change at any time.
 
 ## Daicon
 
-Daicon containers are a wrapping file format, made to make file self-description and versioning easier. They let a file format describe itself using a UUID and semantic version. Additionally, they provide a flexible way to define named and versioned regions of data in the file, called "interfaces".
+Daicon containers are a wrapping file format, made to make file self-description and versioning easier. They let a file format describe itself using a UUID and semantic version. Additionally, they provide a flexible way to define named and versioned regions of data in the file, called "components".
 
 For more information, see the [draft daicon specification](docs/daicon.md).
 

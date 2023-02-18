@@ -2,7 +2,7 @@ use std::{fs::OpenOptions, io::Write, path::Path};
 
 use anyhow::{Context, Error};
 use clap::Args;
-use daicon::{InterfaceEntry, InterfaceTableHeader};
+use daicon::{ComponentEntry, ComponentTableHeader};
 use uuid::uuid;
 
 #[derive(Args, Debug)]
@@ -27,12 +27,12 @@ pub fn run(command: CreateCommand) -> Result<(), Error> {
     // Write the signature
     file.write_all(&daicon::SIGNATURE)?;
 
-    // Write the interface table
-    let mut header = InterfaceTableHeader::new();
+    // Write the component table
+    let mut header = ComponentTableHeader::new();
     header.set_count(1);
     file.write_all(header.as_bytes())?;
 
-    let entry = InterfaceEntry::new(uuid!("2c5e4717-b715-429b-85cd-d320d242547a"));
+    let entry = ComponentEntry::new(uuid!("2c5e4717-b715-429b-85cd-d320d242547a"));
     file.write_all(entry.as_bytes())?;
 
     Ok(())

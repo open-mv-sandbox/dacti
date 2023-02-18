@@ -11,10 +11,10 @@
 //! types, and can be reinterpreted. However, you should avoid doing this. Safe raw binary
 //! conversion can be done instead with `from_bytes`, `from_bytes_mut` and `to_bytes`.
 
-mod interface_entry;
-mod interface_header;
+mod component_entry;
+mod component_header;
 
-pub use self::{interface_entry::InterfaceEntry, interface_header::InterfaceTableHeader};
+pub use self::{component_entry::ComponentEntry, component_header::ComponentTableHeader};
 
 /// Signature of a daicon file, should be inserted and validated at the top of a file.
 pub const SIGNATURE: &[u8] = b"\xFFdaicon0";
