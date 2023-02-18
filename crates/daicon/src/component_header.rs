@@ -2,6 +2,7 @@ use std::num::NonZeroU64;
 
 use bytemuck::{bytes_of, from_bytes, from_bytes_mut, Pod, TransparentWrapper, Zeroable};
 
+#[derive(Clone, TransparentWrapper)]
 #[repr(transparent)]
 pub struct ComponentTableHeader(ComponentTableHeaderRaw);
 
@@ -56,13 +57,11 @@ impl ComponentTableHeader {
     }
 }
 
-#[repr(C)]
 #[derive(Pod, Zeroable, Clone, Copy)]
+#[repr(C)]
 struct ComponentTableHeaderRaw {
     extension_offset: Option<NonZeroU64>,
     extension_count_hint: u32,
     count: u32,
     region_offset: u64,
 }
-
-unsafe impl TransparentWrapper<ComponentTableHeaderRaw> for ComponentTableHeader {}

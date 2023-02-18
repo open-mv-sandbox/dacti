@@ -1,6 +1,7 @@
 use bytemuck::{bytes_of, from_bytes, from_bytes_mut, Pod, TransparentWrapper, Zeroable};
 use uuid::Uuid;
 
+#[derive(Clone, TransparentWrapper)]
 #[repr(transparent)]
 pub struct ComponentEntry(ComponentEntryRaw);
 
@@ -40,11 +41,9 @@ impl ComponentEntry {
     }
 }
 
-#[repr(C)]
 #[derive(Pod, Zeroable, Clone, Copy)]
+#[repr(C)]
 struct ComponentEntryRaw {
     type_uuid: [u8; 16],
     data: [u8; 8],
 }
-
-unsafe impl TransparentWrapper<ComponentEntryRaw> for ComponentEntry {}

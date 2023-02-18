@@ -2,7 +2,7 @@
 
 > 🚧 *This is a working document, describing a work-in-progress format. Nothing described in this document should be seen as final. Features described in this document may not be implemented yet, or differ from as described.*
 
-Daicon containers are a wrapping file format, made to make file self-description and versioning easier. They let a file format describe its features using extendable and versioned "components".
+Daicon containers are a wrapping file format, made to build up flexible and extendible formats out of "components".
 
 | Key | Value |
 | --- | --- |
@@ -11,7 +11,7 @@ Daicon containers are a wrapping file format, made to make file self-description
 
 ## Motivation
 
-Daicon containers are designed, but not exclusively for, metaverse objects, and metaverse data packages. This use case presents many specific requirements that many other formats don't provide:
+Daicon containers are designed, but not exclusively for, metaverse objects, and metaverse data packages. This use case presents many specific requirements that many other formats don't provide (at the same time):
 
 - Backwards and forwards compatibility. If the design of a format changes, or a new format comes in vogue, the component system allows formats to adapt while still providing compatible components.
 - Modularity and extendibility. Superset features or metadata can be added to existing formats, without requiring central coordination. This allows for new format features to be tested easily, and for adding information only relevant for one specific case, without complicating a central format specification.
@@ -136,9 +136,11 @@ A new format version can raise the minimum required version of components. The f
 
 You can include multiple major versions of the same component in a daicon container, as they are required to have different unique UUIDs. If you find yourself needing to include multiple *minor* versions, you are likely not correctly following semantic versioning.
 
-### Reducing Round-Trips
+## Optimizing Daicon
 
 > 🚧 This is pending to be moved to a separate optional superset specification.
+
+### Reducing Round-Trips
 
 If your format will be fetched *partially* from a server, and then indexed using ranges, your format specification should include recommendations to reduce necessary round-trips.
 
@@ -148,8 +150,6 @@ Not all components have to fall in this region, only those that need this 'fast-
 
 ### CDN Cache Coherency
 
-> 🚧 This is pending to be moved to a separate optional superset specification.
-
 Daicon containers are designed for efficient cache coherency on CDNs and edge caches. To achieve this, daicon's component system can be updated atomically.
 
 You can use the values in the component table as atomic switches, after appending binary data, repointing locations, and validating all caches have been updated. The component table itself also has "count" and "extension", which too can be atomically updated after verifying a cache flush.
@@ -157,8 +157,6 @@ You can use the values in the component table as atomic switches, after appendin
 If your format needs this functionality in combination with "Reducing Round-Trips", you are recommended to specify padding in the pre-fetch region, reserving it, to allow the file to be updated without a full cache flush. You should also pad the component table for the same reason.
 
 ### Specifying Append-Only
-
-> 🚧 This is pending to be moved to a separate optional superset specification.
 
 Binary Data previously written should **never** move or change its value to ensure stale client table requests do not retrieve corrupt data from an update. Table pointer to offsets may be updated as necessary. If a file has stale or unused sections, a new file should be created with the unnecessary data culled out.
 
