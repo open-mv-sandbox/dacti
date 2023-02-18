@@ -16,5 +16,7 @@ web-sys = "0.3.61"
 wasm-bindgen = "0.2.63"
 wasm-bindgen-futures = "0.4.34"
 wgpu = "0.15.1"
-daicon = { path = "./crates/daicon" }
+dacti-pack = { path = "./crates/dacti-pack" }
 dacti-viewer = { path = "./crates/dacti-viewer" }
+daicon = { path = "./crates/daicon" }
+wrapmuck = { path = "./crates/wrapmuck" }

@@ -261,6 +261,11 @@ dependencies = [
 [[package]]
 name = "dacti-pack"
 version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "uuid",
+ "wrapmuck",
+]
 
 [[package]]
 name = "dacti-viewer"
@@ -286,9 +291,9 @@ dependencies = [
 name = "daicon"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "bytemuck",
  "uuid",
+ "wrapmuck",
 ]
 
 [[package]]
@@ -745,6 +750,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
+ "dacti-pack",
  "daicon",
  "uuid",
 ]
@@ -1298,3 +1304,11 @@ name = "windows_x86_64_msvc"
 version = "0.42.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "447660ad36a13288b1db4d4248e857b510e8c3a225c822ba4fb748c0aafecffd"
+
+[[package]]
+name = "wrapmuck"
+version = "0.1.0"
+dependencies = [
+ "quote",
+ "syn",
+]

@@ -61,10 +61,10 @@ The component table starts with a header, describing metadata for parsing this s
 | --- | --- |
 | 8 | extension offset |
 | 4 | extension count hint |
-| 4 | count |
+| 4 | length |
 | 8 | region offset |
 
-Following this, you will find `count` amount of components.
+Following this, you will find `length` amount of components.
 
 | Bytes | Description |
 | --- | --- |

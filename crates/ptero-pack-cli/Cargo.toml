@@ -11,4 +11,5 @@ path = "src/main.rs"
 anyhow.workspace = true
 clap = { workspace = true, features = ["derive"] }
 uuid.workspace = true
+dacti-pack.workspace = true
 daicon.workspace = true
