@@ -2,7 +2,7 @@ use std::{fs::OpenOptions, io::Write, path::Path};
 
 use anyhow::{Context, Error};
 use clap::Args;
-use daicon::{InterfaceEntry, InterfaceTableHeader, Version};
+use daicon::{InterfaceEntry, InterfaceTableHeader};
 use uuid::uuid;
 
 #[derive(Args, Debug)]
@@ -32,10 +32,7 @@ pub fn run(command: CreateCommand) -> Result<(), Error> {
     header.set_count(1);
     file.write_all(header.as_bytes())?;
 
-    let entry = InterfaceEntry::new(
-        uuid!("2c5e4717-b715-429b-85cd-d320d242547a"),
-        Version::new(0, 0),
-    );
+    let entry = InterfaceEntry::new(uuid!("2c5e4717-b715-429b-85cd-d320d242547a"));
     file.write_all(entry.as_bytes())?;
 
     Ok(())

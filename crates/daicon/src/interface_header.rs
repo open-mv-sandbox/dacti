@@ -19,12 +19,8 @@ impl InterfaceTableHeader {
         Self::wrap_mut(from_bytes_mut(bytes))
     }
 
-    pub fn region_offset(&self) -> u64 {
-        self.0.region_offset
-    }
-
-    pub fn set_region_offset(&mut self, value: u64) {
-        self.0.region_offset = value;
+    pub fn as_bytes(&self) -> &[u8] {
+        bytes_of(&self.0)
     }
 
     pub fn extension_offset(&self) -> Option<NonZeroU64> {
@@ -35,6 +31,14 @@ impl InterfaceTableHeader {
         self.0.extension_offset = value;
     }
 
+    pub fn extension_count_hint(&self) -> u32 {
+        self.0.extension_count_hint
+    }
+
+    pub fn set_extension_count_hint(&mut self, value: u32) {
+        self.0.extension_count_hint = value;
+    }
+
     pub fn count(&self) -> u32 {
         self.0.count
     }
@@ -43,18 +47,22 @@ impl InterfaceTableHeader {
         self.0.count = value;
     }
 
-    pub fn as_bytes(&self) -> &[u8] {
-        bytes_of(&self.0)
+    pub fn region_offset(&self) -> u64 {
+        self.0.region_offset
+    }
+
+    pub fn set_region_offset(&mut self, value: u64) {
+        self.0.region_offset = value;
     }
 }
 
 #[repr(C)]
 #[derive(Pod, Zeroable, Clone, Copy)]
 struct InterfaceTableHeaderRaw {
-    region_offset: u64,
     extension_offset: Option<NonZeroU64>,
-    reserved: u32,
+    extension_count_hint: u32,
     count: u32,
+    region_offset: u64,
 }
 
 unsafe impl TransparentWrapper<InterfaceTableHeaderRaw> for InterfaceTableHeader {}

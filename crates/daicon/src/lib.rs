@@ -18,18 +18,3 @@ pub use self::{interface_entry::InterfaceEntry, interface_header::InterfaceTable
 
 /// Signature of a daicon file, should be inserted and validated at the top of a file.
 pub const SIGNATURE: &[u8] = b"\xFFdaicon0";
-
-/// Semantic version for formats and interfaces.
-///
-/// Only contains major and minor, see daicon spec for reasoning.
-#[derive(Eq, PartialEq, Copy, Clone)]
-pub struct Version {
-    pub major: u16,
-    pub minor: u16,
-}
-
-impl Version {
-    pub fn new(major: u16, minor: u16) -> Self {
-        Version { major, minor }
-    }
-}
