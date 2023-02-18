@@ -1,13 +1,13 @@
 use std::{
     fs::OpenOptions,
     io::{Seek, SeekFrom, Write},
+    mem::size_of,
 };
 
 use anyhow::{Context, Error};
 use clap::Args;
-use dacti_pack::IndexComponentHeader;
-use daicon::{ComponentEntry, ComponentTableHeader};
-use uuid::uuid;
+use dacti_pack::{IndexComponentHeader, INDEX_COMPONENT_ID};
+use daicon::{ComponentEntry, ComponentTableHeader, RegionData};
 
 /// Create a new dacti package.
 #[derive(Args, Debug)]
@@ -40,12 +40,11 @@ pub fn run(command: CreateCommand) -> Result<(), Error> {
     package.write_all(header.as_bytes())?;
 
     let mut entry = ComponentEntry::new();
-    entry.set_type_uuid(uuid!("2c5e4717-b715-429b-85cd-d320d242547a"));
+    entry.set_type_uuid(INDEX_COMPONENT_ID);
 
-    let mut data = [0u8; 8];
-    data[0..4].copy_from_slice(&indices_offset.to_le_bytes());
-    data[4..8].copy_from_slice(&4u32.to_le_bytes());
-    entry.set_data(data);
+    let region = RegionData::from_bytes_mut(entry.data_mut());
+    region.set_offset(indices_offset);
+    region.set_size(size_of::<IndexComponentHeader>() as u32);
 
     package.write_all(entry.as_bytes())?;
 

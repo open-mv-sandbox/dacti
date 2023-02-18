@@ -4,7 +4,7 @@ use bytemuck::{Pod, TransparentWrapper, Zeroable};
 use wrapmuck::Wrapmuck;
 
 /// Header of the component table.
-#[derive(TransparentWrapper, Wrapmuck, Clone)]
+#[derive(TransparentWrapper, Wrapmuck, Debug, Clone)]
 #[repr(transparent)]
 pub struct ComponentTableHeader(ComponentTableHeaderRaw);
 
@@ -43,7 +43,7 @@ impl ComponentTableHeader {
     }
 }
 
-#[derive(Pod, Zeroable, Clone, Copy)]
+#[derive(Pod, Zeroable, Debug, Clone, Copy)]
 #[repr(C)]
 struct ComponentTableHeaderRaw {
     extension_offset: u64,

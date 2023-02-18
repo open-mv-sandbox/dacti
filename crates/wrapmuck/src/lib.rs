@@ -26,7 +26,7 @@ pub fn derive_wrapmuck(input: TokenStream) -> TokenStream {
             }
 
             /// Convert a mutable byte slice to a mutable value reference.
-            pub fn from_bytes_mut(bytes: &mut [u8]) -> &Self {
+            pub fn from_bytes_mut(bytes: &mut [u8]) -> &mut Self {
                 bytemuck::TransparentWrapper::wrap_mut(bytemuck::from_bytes_mut(bytes))
             }
 
