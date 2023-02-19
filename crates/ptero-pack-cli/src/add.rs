@@ -7,7 +7,7 @@ use std::{
 use anyhow::{bail, Context, Error};
 use clap::Args;
 use dacti_pack::{
-    IndexComponentEntry, IndexComponentHeader, IndexComponentRegion, INDEX_COMPONENT_ID,
+    IndexComponentHeader, IndexEntry, IndexGroup, IndexGroupEncoding, INDEX_COMPONENT_UUID,
 };
 use daicon::{ComponentEntry, ComponentTableHeader, RegionData};
 use uuid::uuid;
@@ -52,11 +52,12 @@ pub fn run(command: AddCommand) -> Result<(), Error> {
     package.seek(SeekFrom::Start(region_offset))?;
     package.write_all(header.as_bytes())?;
 
-    let mut region = IndexComponentRegion::new();
-    region.set_length(1);
-    package.write_all(region.as_bytes())?;
+    let mut group = IndexGroup::new();
+    group.set_encoding(IndexGroupEncoding::None);
+    group.set_length(1);
+    package.write_all(group.as_bytes())?;
 
-    let mut entry = IndexComponentEntry::new();
+    let mut entry = IndexEntry::new();
     entry.set_uuid(uuid!("bacc2ba1-8dc7-4d54-a7a4-cdad4d893a1b"));
     entry.set_offset(data_start as u32);
     entry.set_size(data.len() as u32);
@@ -83,7 +84,7 @@ fn find_index_component(package: &mut File) -> Result<(u64, u64), Error> {
         package.read_exact(entry.as_bytes_mut())?;
 
         // Continue until we find the correct component
-        if entry.type_uuid() != INDEX_COMPONENT_ID {
+        if entry.type_uuid() != INDEX_COMPONENT_UUID {
             entry_offset = package.seek(SeekFrom::Current(size_of::<ComponentEntry>() as i64))?;
             continue;
         }

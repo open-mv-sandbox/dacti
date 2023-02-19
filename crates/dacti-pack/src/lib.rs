@@ -1,11 +1,13 @@
 mod entry;
+mod group;
 mod header;
-mod region;
 
 use uuid::{uuid, Uuid};
 
 pub use self::{
-    entry::IndexComponentEntry, header::IndexComponentHeader, region::IndexComponentRegion,
+    entry::IndexEntry,
+    group::{IndexGroup, IndexGroupEncoding},
+    header::IndexComponentHeader,
 };
 
-pub const INDEX_COMPONENT_ID: Uuid = uuid!("2c5e4717-b715-429b-85cd-d320d242547a");
+pub const INDEX_COMPONENT_UUID: Uuid = uuid!("2c5e4717-b715-429b-85cd-d320d242547a");

@@ -6,7 +6,7 @@ use std::{
 
 use anyhow::{Context, Error};
 use clap::Args;
-use dacti_pack::{IndexComponentHeader, INDEX_COMPONENT_ID};
+use dacti_pack::{IndexComponentHeader, INDEX_COMPONENT_UUID};
 use daicon::{ComponentEntry, ComponentTableHeader, RegionData};
 
 /// Create a new dacti package.
@@ -40,7 +40,7 @@ pub fn run(command: CreateCommand) -> Result<(), Error> {
     package.write_all(header.as_bytes())?;
 
     let mut entry = ComponentEntry::new();
-    entry.set_type_uuid(INDEX_COMPONENT_ID);
+    entry.set_type_uuid(INDEX_COMPONENT_UUID);
 
     let region = RegionData::from_bytes_mut(entry.data_mut());
     region.set_offset(indices_offset);

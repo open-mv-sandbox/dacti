@@ -4,9 +4,9 @@ use wrapmuck::Wrapmuck;
 
 #[derive(TransparentWrapper, Wrapmuck, Debug, Clone)]
 #[repr(transparent)]
-pub struct IndexComponentEntry(IndexComponentEntryRaw);
+pub struct IndexEntry(IndexComponentEntryRaw);
 
-impl IndexComponentEntry {
+impl IndexEntry {
     pub fn uuid(&self) -> Uuid {
         Uuid::from_bytes_le(self.0.uuid)
     }
