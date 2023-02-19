@@ -8,6 +8,7 @@ use anyhow::{Context, Error};
 use clap::Args;
 use dacti_pack::{IndexComponentHeader, INDEX_COMPONENT_UUID};
 use daicon::{ComponentEntry, ComponentTableHeader, RegionData};
+use tracing::{event, Level};
 
 /// Create a new dacti package.
 #[derive(Args, Debug)]
@@ -18,7 +19,7 @@ pub struct CreateCommand {
 }
 
 pub fn run(command: CreateCommand) -> Result<(), Error> {
-    println!("creating package...");
+    event!(Level::INFO, "creating package...");
 
     // Reserve 1kb for header and component table
     let indices_offset: u32 = 1024;

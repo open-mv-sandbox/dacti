@@ -2,8 +2,15 @@ mod add;
 mod create;
 
 use clap::{Parser, Subcommand};
+use tracing::{event, Level};
+use tracing_subscriber::FmtSubscriber;
 
 fn main() {
+    let subscriber = FmtSubscriber::builder()
+        .with_max_level(Level::TRACE)
+        .finish();
+    tracing::subscriber::set_global_default(subscriber).unwrap();
+
     let args = CliArgs::parse();
 
     let result = match args.command {
@@ -12,7 +19,7 @@ fn main() {
     };
 
     if let Err(error) = result {
-        println!("failed:\n{:?}", error);
+        event!(Level::ERROR, "failed:\n{:?}", error);
         std::process::exit(1);
     }
 }

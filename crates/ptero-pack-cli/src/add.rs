@@ -10,6 +10,7 @@ use dacti_pack::{
     IndexComponentHeader, IndexEntry, IndexGroup, IndexGroupEncoding, INDEX_COMPONENT_UUID,
 };
 use daicon::{ComponentEntry, ComponentTableHeader, RegionData};
+use tracing::{event, Level};
 use uuid::uuid;
 
 /// Add files to a dacti package.
@@ -25,7 +26,7 @@ pub struct AddCommand {
 }
 
 pub fn run(command: AddCommand) -> Result<(), Error> {
-    println!("adding file to package...");
+    event!(Level::INFO, "adding file to package...");
 
     // The first 32kb is reserved for components and indices
     let data_start = 1024 * 32;
@@ -42,7 +43,9 @@ pub fn run(command: AddCommand) -> Result<(), Error> {
     let data = std::fs::read(&command.file)?;
 
     // Find the current location of the index component
-    let (_entry_offset, region_offset) = find_index_component(&mut package)?;
+    let (table, entry_i) = find_index_component(&mut package)?;
+    let region = RegionData::from_bytes(entry_i.value.data());
+    let region_offset = table.region_offset() + region.offset() as u64;
 
     // Add entries for the new file's location and size
     let mut header = IndexComponentHeader::new();
@@ -70,8 +73,9 @@ pub fn run(command: AddCommand) -> Result<(), Error> {
     Ok(())
 }
 
-/// Returns: (entry offset, component offset)
-fn find_index_component(package: &mut File) -> Result<(u64, u64), Error> {
+fn find_index_component(
+    package: &mut File,
+) -> Result<(ComponentTableHeader, Indexed<ComponentEntry>), Error> {
     let mut header = ComponentTableHeader::new();
     package.seek(SeekFrom::Start(8))?;
     package.read_exact(header.as_bytes_mut())?;
@@ -89,11 +93,19 @@ fn find_index_component(package: &mut File) -> Result<(u64, u64), Error> {
             continue;
         }
 
-        let region = RegionData::from_bytes(entry.data());
-        let region_offset = header.region_offset() + region.offset() as u64;
-
-        return Ok((entry_offset, region_offset));
+        let entry_i = Indexed {
+            offset: entry_offset,
+            value: entry,
+        };
+        return Ok((header, entry_i));
     }
 
     bail!("unable to find index component");
+}
+
+/// Combination value and its index as byte offset.
+struct Indexed<T> {
+    #[allow(dead_code)]
+    offset: u64,
+    value: T,
 }
