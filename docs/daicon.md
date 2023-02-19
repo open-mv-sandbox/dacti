@@ -174,7 +174,8 @@ This example format specification describes a file containing arbitrary text.
 | --- | --- |
 | Name | Text File Example |
 | Version | 0.1.0 |
-| UUID | 877da608-a3ae-4ca9-aae4-1bda00aedd14 |
+| Extension | .example-text |
+| MIME-Type | application/prs.example-text |
 
 This file format contains generic text data, to be used by text editors. The contents are stored in a "Text Component Example" component.
 
@@ -199,6 +200,6 @@ This example component specification describes the presence of unstructured text
 | Name | Text Component Example |
 | Version | 0.1.0 |
 | UUID | 37cb72a4-caab-440c-8b7c-869019ed348e |
-| Table Data | Region |
+| Table Data | region |
 
 The contents of the component region is UTF-8 text data. Null characters should be considered invalid data and an implementation **MUST** reject parsing the component if the region contains these.

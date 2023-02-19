@@ -52,15 +52,7 @@ pub enum IndexGroupEncoding {
 
 impl IndexGroupEncoding {
     pub fn from_bytes(bytes: [u8; 4]) -> Self {
-        let length = bytes
-            .iter()
-            .cloned()
-            .enumerate()
-            .find(|(_, v)| *v == 0)
-            .map(|(i, _)| i)
-            .unwrap_or(4);
-
-        let value = match std::str::from_utf8(&bytes[0..length]) {
+        let value = match extract_str(&bytes) {
             Ok(value) => value,
             Err(_) => return Self::Unknown(bytes),
         };
@@ -79,4 +71,16 @@ impl IndexGroupEncoding {
             Self::Unknown(bytes) => bytes,
         }
     }
+}
+
+fn extract_str(bytes: &[u8]) -> Result<&str, std::str::Utf8Error> {
+    let mut length = 4;
+    for (i, c) in bytes.iter().enumerate() {
+        if *c == 0 {
+            length = i;
+            break;
+        }
+    }
+
+    std::str::from_utf8(&bytes[0..length])
 }

@@ -33,7 +33,7 @@ pub fn run(command: CreateCommand) -> Result<(), Error> {
         .context("failed to open target package for writing")?;
 
     // Write the signature
-    package.write_all(&daicon::SIGNATURE)?;
+    package.write_all(daicon::SIGNATURE)?;
 
     // Write the component table
     let mut header = ComponentTableHeader::zeroed();
