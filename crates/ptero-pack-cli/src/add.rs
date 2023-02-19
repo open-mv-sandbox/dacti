@@ -11,7 +11,7 @@ use dacti_pack::{
 };
 use daicon::{ComponentEntry, ComponentTableHeader, RegionData};
 use tracing::{event, Level};
-use uuid::uuid;
+use uuid::Uuid;
 
 /// Add files to a dacti package.
 #[derive(Args, Debug)]
@@ -20,9 +20,13 @@ pub struct AddCommand {
     #[arg(short, long, value_name = "PATH")]
     package: String,
 
-    /// The file to add.
+    /// The input location of the file to add.
     #[arg(short, long, value_name = "PATH")]
-    file: String,
+    input: String,
+
+    /// The UUID to assign the input file.
+    #[arg(short, long, value_name = "UUID")]
+    uuid: Uuid,
 }
 
 pub fn run(command: AddCommand) -> Result<(), Error> {
@@ -40,7 +44,8 @@ pub fn run(command: AddCommand) -> Result<(), Error> {
 
     // TODO: Find a free slot rather than just assuming there's no files yet
     // TODO: Update the index table
-    let data = std::fs::read(&command.file)?;
+    let mut input_file = File::open(&command.input)?;
+    let input_length = input_file.metadata()?.len();
 
     // Find the current location of the index component
     let (table, entry_i) = find_index_component(&mut package)?;
@@ -61,14 +66,14 @@ pub fn run(command: AddCommand) -> Result<(), Error> {
     package.write_all(group.as_bytes())?;
 
     let mut entry = IndexEntry::new();
-    entry.set_uuid(uuid!("bacc2ba1-8dc7-4d54-a7a4-cdad4d893a1b"));
+    entry.set_uuid(command.uuid);
     entry.set_offset(data_start as u32);
-    entry.set_size(data.len() as u32);
+    entry.set_size(input_length as u32);
     package.write_all(entry.as_bytes())?;
 
     // Write the file to the package
     package.seek(SeekFrom::Start(data_start))?;
-    package.write_all(&data)?;
+    std::io::copy(&mut input_file, &mut package)?;
 
     Ok(())
 }
