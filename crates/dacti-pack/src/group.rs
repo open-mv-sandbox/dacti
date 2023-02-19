@@ -3,12 +3,12 @@ use wrapmuck::Wrapmuck;
 
 /// Group of indices with specific encoding, starting at a given offset.
 ///
-/// Groups always contain 64 entries of space, but length says how many are actually valid.
+/// Groups always contain 255 entries of space, but `length` says how many are actually valid.
 #[derive(TransparentWrapper, Wrapmuck, Debug, Clone)]
 #[repr(transparent)]
-pub struct IndexGroup(IndexGroupRaw);
+pub struct IndexGroupHeader(IndexGroupHeaderRaw);
 
-impl IndexGroup {
+impl IndexGroupHeader {
     pub fn offset(&self) -> u64 {
         u64::from_le(self.0.offset)
     }
@@ -25,21 +25,22 @@ impl IndexGroup {
         self.0.encoding = value.to_bytes();
     }
 
-    pub fn length(&self) -> u32 {
-        u32::from_le(self.0.length)
+    pub fn length(&self) -> u8 {
+        self.0.length
     }
 
-    pub fn set_length(&mut self, value: u32) {
-        self.0.length = value.to_le();
+    pub fn set_length(&mut self, value: u8) {
+        self.0.length = value;
     }
 }
 
 #[derive(Pod, Zeroable, Debug, Clone, Copy)]
 #[repr(C)]
-struct IndexGroupRaw {
+struct IndexGroupHeaderRaw {
     offset: u64,
     encoding: [u8; 4],
-    length: u32,
+    length: u8,
+    _reserved: [u8; 3],
 }
 
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]

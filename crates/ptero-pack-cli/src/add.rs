@@ -7,7 +7,7 @@ use std::{
 use anyhow::{bail, Context, Error};
 use clap::Args;
 use dacti_pack::{
-    IndexComponentHeader, IndexEntry, IndexGroup, IndexGroupEncoding, INDEX_COMPONENT_UUID,
+    IndexComponentHeader, IndexEntry, IndexGroupEncoding, IndexGroupHeader, INDEX_COMPONENT_UUID,
 };
 use daicon::{ComponentEntry, ComponentTableHeader, RegionData};
 use tracing::{event, Level};
@@ -70,7 +70,7 @@ fn add_index(package: &mut File, uuid: Uuid, offset: u32, size: u32) -> Result<(
     // Add entries for the new file's location and size
     let entry_offset = find_next_free_index(package, component_offset)?;
 
-    let mut entry = IndexEntry::new();
+    let mut entry = IndexEntry::zeroed();
     entry.set_uuid(uuid);
     entry.set_offset(offset);
     entry.set_size(size);
@@ -84,14 +84,14 @@ fn add_index(package: &mut File, uuid: Uuid, offset: u32, size: u32) -> Result<(
 fn find_next_free_index(package: &mut File, component_offset: u64) -> Result<u64, Error> {
     // TODO: Find a free slot rather than just assuming there's no groups yet
 
-    let mut header = IndexComponentHeader::new();
+    let mut header = IndexComponentHeader::zeroed();
     package.seek(SeekFrom::Start(component_offset))?;
     package.read_exact(header.as_bytes_mut())?;
     header.set_groups(1);
     package.seek(SeekFrom::Start(component_offset))?;
     package.write_all(header.as_bytes())?;
 
-    let mut group = IndexGroup::new();
+    let mut group = IndexGroupHeader::zeroed();
     group.set_encoding(IndexGroupEncoding::None);
     group.set_length(1);
     package.write_all(group.as_bytes())?;
@@ -104,7 +104,7 @@ fn find_component_entry(
     package: &mut File,
     uuid: Uuid,
 ) -> Result<(u64, Indexed<ComponentEntry>), Error> {
-    let mut header = ComponentTableHeader::new();
+    let mut header = ComponentTableHeader::zeroed();
     package.seek(SeekFrom::Start(8))?;
     package.read_exact(header.as_bytes_mut())?;
 
@@ -112,7 +112,7 @@ fn find_component_entry(
 
     let mut entry_offset = package.stream_position()?;
     for _ in 0..header.length() {
-        let mut entry = ComponentEntry::new();
+        let mut entry = ComponentEntry::zeroed();
         package.read_exact(entry.as_bytes_mut())?;
 
         // Continue until we find the correct component

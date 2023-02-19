@@ -1,4 +1,4 @@
-//! Daicon writing and reading utility library.
+//! Daicon low-level types, for zero-copy reading and writing.
 //!
 //! This library does not guarantee 100% correctness in input or output, but will provide minimal
 //! validation where useful. In most cases, you should not use this library directly, but instead
@@ -9,7 +9,8 @@
 //!
 //! Where possible, high-level wrappers are `#[repr(transparent)]` to the low-level data of those
 //! types, and can be reinterpreted. However, you should avoid doing this. Safe raw binary
-//! conversion can be done instead with `from_bytes`, `from_bytes_mut` and `to_bytes`.
+//! conversion can be done instead with `from_bytes`, `from_bytes_mut`, `as_bytes`, and
+//! `as_bytes_mut`.
 
 mod entry;
 mod header;

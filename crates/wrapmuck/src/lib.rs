@@ -15,7 +15,7 @@ pub fn derive_wrapmuck(input: TokenStream) -> TokenStream {
     let expanded = quote! {
         impl #ident {
             /// Create a new zeroed value.
-            pub fn new() -> Self {
+            pub fn zeroed() -> Self {
                 let value = Self(bytemuck::Zeroable::zeroed());
                 value
             }

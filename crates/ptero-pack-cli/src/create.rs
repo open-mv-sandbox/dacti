@@ -36,11 +36,11 @@ pub fn run(command: CreateCommand) -> Result<(), Error> {
     package.write_all(&daicon::SIGNATURE)?;
 
     // Write the component table
-    let mut header = ComponentTableHeader::new();
+    let mut header = ComponentTableHeader::zeroed();
     header.set_length(1);
     package.write_all(header.as_bytes())?;
 
-    let mut entry = ComponentEntry::new();
+    let mut entry = ComponentEntry::zeroed();
     entry.set_type_uuid(INDEX_COMPONENT_UUID);
 
     let region = RegionData::from_bytes_mut(entry.data_mut());
@@ -51,7 +51,7 @@ pub fn run(command: CreateCommand) -> Result<(), Error> {
 
     // Write an empty indices table
     package.seek(SeekFrom::Start(indices_offset as u64))?;
-    let header = IndexComponentHeader::new();
+    let header = IndexComponentHeader::zeroed();
     package.write_all(header.as_bytes())?;
 
     Ok(())
