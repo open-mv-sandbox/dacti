@@ -761,6 +761,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "74605f360ce573babfe43964cbe520294dcb081afbf8c108fc6e23036b4da2df"
 
 [[package]]
+name = "ptero-pack"
+version = "0.1.0"
+
+[[package]]
 name = "ptero-pack-cli"
 version = "0.1.0"
 dependencies = [

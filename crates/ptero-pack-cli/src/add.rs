@@ -63,30 +63,32 @@ fn add_index(package: &mut File, uuid: Uuid, offset: u32, size: u32) -> Result<(
     // TODO: Find a free slot rather than just assuming there's no files yet
 
     // Find the current location of the index component
-    let (table, entry_i) = find_component_entry(package, INDEX_COMPONENT_UUID)?;
-    let region = RegionData::from_bytes(entry_i.value.data());
-    let region_offset = table.region_offset() + region.offset() as u64;
+    let (table_region_offset, entry) = find_component_entry(package, INDEX_COMPONENT_UUID)?;
+    let region = RegionData::from_bytes(entry.value.data());
+    let component_offset = table_region_offset + region.offset() as u64;
 
     // Add entries for the new file's location and size
-    get_or_add_group(package, region_offset)?;
+    let entry_offset = find_next_free_index(package, component_offset)?;
 
     let mut entry = IndexEntry::new();
     entry.set_uuid(uuid);
     entry.set_offset(offset);
     entry.set_size(size);
+
+    package.seek(SeekFrom::Start(entry_offset))?;
     package.write_all(entry.as_bytes())?;
 
     Ok(())
 }
 
-fn get_or_add_group(package: &mut File, region_offset: u64) -> Result<(), Error> {
+fn find_next_free_index(package: &mut File, component_offset: u64) -> Result<u64, Error> {
     // TODO: Find a free slot rather than just assuming there's no groups yet
 
     let mut header = IndexComponentHeader::new();
-    package.seek(SeekFrom::Start(region_offset))?;
+    package.seek(SeekFrom::Start(component_offset))?;
     package.read_exact(header.as_bytes_mut())?;
     header.set_groups(1);
-    package.seek(SeekFrom::Start(region_offset))?;
+    package.seek(SeekFrom::Start(component_offset))?;
     package.write_all(header.as_bytes())?;
 
     let mut group = IndexGroup::new();
@@ -94,13 +96,14 @@ fn get_or_add_group(package: &mut File, region_offset: u64) -> Result<(), Error>
     group.set_length(1);
     package.write_all(group.as_bytes())?;
 
-    Ok(())
+    let offset = package.stream_position()?;
+    Ok(offset)
 }
 
 fn find_component_entry(
     package: &mut File,
     uuid: Uuid,
-) -> Result<(ComponentTableHeader, Indexed<ComponentEntry>), Error> {
+) -> Result<(u64, Indexed<ComponentEntry>), Error> {
     let mut header = ComponentTableHeader::new();
     package.seek(SeekFrom::Start(8))?;
     package.read_exact(header.as_bytes_mut())?;
@@ -122,7 +125,7 @@ fn find_component_entry(
             offset: entry_offset,
             value: entry,
         };
-        return Ok((header, entry_i));
+        return Ok((header.region_offset(), entry_i));
     }
 
     bail!("unable to find index component");
