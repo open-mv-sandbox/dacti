@@ -42,34 +42,15 @@ pub fn run(command: AddCommand) -> Result<(), Error> {
         .open(command.package)
         .context("failed to open target package for writing")?;
 
-    // TODO: Find a free slot rather than just assuming there's no files yet
-    // TODO: Update the index table
     let mut input_file = File::open(&command.input)?;
-    let input_length = input_file.metadata()?.len();
+    let input_size = input_file.metadata()?.len();
 
-    // Find the current location of the index component
-    let (table, entry_i) = find_index_component(&mut package)?;
-    let region = RegionData::from_bytes(entry_i.value.data());
-    let region_offset = table.region_offset() + region.offset() as u64;
-
-    // Add entries for the new file's location and size
-    let mut header = IndexComponentHeader::new();
-    package.seek(SeekFrom::Start(region_offset))?;
-    package.read_exact(header.as_bytes_mut())?;
-    header.set_regions(1);
-    package.seek(SeekFrom::Start(region_offset))?;
-    package.write_all(header.as_bytes())?;
-
-    let mut group = IndexGroup::new();
-    group.set_encoding(IndexGroupEncoding::None);
-    group.set_length(1);
-    package.write_all(group.as_bytes())?;
-
-    let mut entry = IndexEntry::new();
-    entry.set_uuid(command.uuid);
-    entry.set_offset(data_start as u32);
-    entry.set_size(input_length as u32);
-    package.write_all(entry.as_bytes())?;
+    add_index(
+        &mut package,
+        command.uuid,
+        data_start as u32,
+        input_size as u32,
+    )?;
 
     // Write the file to the package
     package.seek(SeekFrom::Start(data_start))?;
@@ -78,8 +59,47 @@ pub fn run(command: AddCommand) -> Result<(), Error> {
     Ok(())
 }
 
-fn find_index_component(
+fn add_index(package: &mut File, uuid: Uuid, offset: u32, size: u32) -> Result<(), Error> {
+    // TODO: Find a free slot rather than just assuming there's no files yet
+
+    // Find the current location of the index component
+    let (table, entry_i) = find_component_entry(package, INDEX_COMPONENT_UUID)?;
+    let region = RegionData::from_bytes(entry_i.value.data());
+    let region_offset = table.region_offset() + region.offset() as u64;
+
+    // Add entries for the new file's location and size
+    get_or_add_group(package, region_offset)?;
+
+    let mut entry = IndexEntry::new();
+    entry.set_uuid(uuid);
+    entry.set_offset(offset);
+    entry.set_size(size);
+    package.write_all(entry.as_bytes())?;
+
+    Ok(())
+}
+
+fn get_or_add_group(package: &mut File, region_offset: u64) -> Result<(), Error> {
+    // TODO: Find a free slot rather than just assuming there's no groups yet
+
+    let mut header = IndexComponentHeader::new();
+    package.seek(SeekFrom::Start(region_offset))?;
+    package.read_exact(header.as_bytes_mut())?;
+    header.set_groups(1);
+    package.seek(SeekFrom::Start(region_offset))?;
+    package.write_all(header.as_bytes())?;
+
+    let mut group = IndexGroup::new();
+    group.set_encoding(IndexGroupEncoding::None);
+    group.set_length(1);
+    package.write_all(group.as_bytes())?;
+
+    Ok(())
+}
+
+fn find_component_entry(
     package: &mut File,
+    uuid: Uuid,
 ) -> Result<(ComponentTableHeader, Indexed<ComponentEntry>), Error> {
     let mut header = ComponentTableHeader::new();
     package.seek(SeekFrom::Start(8))?;
@@ -93,7 +113,7 @@ fn find_index_component(
         package.read_exact(entry.as_bytes_mut())?;
 
         // Continue until we find the correct component
-        if entry.type_uuid() != INDEX_COMPONENT_UUID {
+        if entry.type_uuid() != uuid {
             entry_offset = package.seek(SeekFrom::Current(size_of::<ComponentEntry>() as i64))?;
             continue;
         }
