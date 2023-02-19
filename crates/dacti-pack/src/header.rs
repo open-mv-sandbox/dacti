@@ -27,6 +27,5 @@ impl IndexComponentHeader {
 #[repr(C)]
 struct IndexComponentHeaderRaw {
     version: u32,
-    // TODO: Group spacing, currently adding a file may require group reorder, violating append-only
     groups: u32,
 }

@@ -1,6 +1,9 @@
 use bytemuck::{Pod, TransparentWrapper, Zeroable};
 use wrapmuck::Wrapmuck;
 
+/// Group of indices with specific encoding, starting at a given offset.
+///
+/// Groups always contain 64 entries of space, but length says how many are actually valid.
 #[derive(TransparentWrapper, Wrapmuck, Debug, Clone)]
 #[repr(transparent)]
 pub struct IndexGroup(IndexGroupRaw);

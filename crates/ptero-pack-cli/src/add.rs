@@ -32,8 +32,8 @@ pub struct AddCommand {
 pub fn run(command: AddCommand) -> Result<(), Error> {
     event!(Level::INFO, "adding file to package...");
 
-    // The first 32kb is reserved for components and indices
-    let data_start = 1024 * 32;
+    // The first 64kb is reserved for components and indices
+    let data_start = 1024 * 64;
 
     // Open the target package
     let mut package = OpenOptions::new()

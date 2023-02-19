@@ -36,7 +36,6 @@ impl IndexEntry {
 #[repr(C)]
 struct IndexComponentEntryRaw {
     uuid: [u8; 16],
-    // TODO: This offset limits packages to 4GB, add 'regions' with relative offsets
     offset: u32,
     size: u32,
 }
