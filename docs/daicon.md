@@ -55,16 +55,16 @@ This signature starts with a non-printable character, to aide in auto-detecting 
 
 ### Component Table
 
-The component table starts with a header, describing metadata for parsing this set of components, and a pointer to the next set.
+The component table starts with a header, describing metadata for parsing this set of components, and a pointer to the next component table.
 
 | Bytes | Description |
 | --- | --- |
-| 8 | extension offset |
-| 4 | extension count hint |
+| 8 | next table offset |
+| 4 | next table length hint |
 | 4 | length |
-| 8 | region offset |
+| 8 | entries offset |
 
-Following this, you will find `length` amount of components.
+Directly following this, there will be `length` amount of components.
 
 | Bytes | Description |
 | --- | --- |
@@ -73,15 +73,15 @@ Following this, you will find `length` amount of components.
 
 #### Type ID
 
-The type ID is used to identify the location of components for compatibility and interoperability. components are expected to follow semantic versioning, with a major version increase resulting in a new ID.
+The `type UUID` is used to identify the location of components for compatibility and interoperability. Components are expected to follow semantic versioning, with a major version increase resulting in a new UUID.
 
-Type IDs **MUST** be unique, this enforces that there is no situation where continuing to read a table will change the components already found. An implementation can decide to stop reading components early, if it has found the components it needs.
+Type UUIDs **MUST** be unique, this enforces that there is no situation where continuing to read a table will change the components already found. An implementation can decide to stop reading components early, if it has found the components it needs.
 
 A format **MAY** specify recommended component ordering to aide in detecting the best components available for a task.
 
 #### Data
 
-Components define the format of their data in the table themselves, but will typically specify a "region". A "region" is an offset and size, both 4 bytes long. If specifying an offset or a region, those should be offset by the "region offset" value in the table header. When the data specifies a region, these **MAY** overlap.
+Components define the format of their data in the table themselves, but will typically specify a "region". A "region" is an `offset` and `size`, both 4 bytes long. When specifying offsets, those should be added with the `entries offset` value in the table header. When the data specifies a region, these **MAY** overlap.
 
 > ⚠️ Always validate all offsets and sizes.
 
@@ -91,17 +91,17 @@ Regions are arbitrary binary data, and how they are interpreted is decided by th
 
 It is recommended for the minor version of a component to be tracked inside the component data or region. For example, as a JSON field if your component uses JSON.
 
-#### Extension
+#### Next Table
 
-If not null, the extension descibes the location of another component table. This is to allow the recommendations in "CDN Cache Coherency" and "Reducing Round-Trips" to be followed without limiting extensibility.
+If not zero, the `next table` descibes the location of the next component table. This is to allow the recommendations in "CDN Cache Coherency" and "Reducing Round-Trips" to be followed without limiting extensibility.
 
-The extension count hint specifices how many components **MAY** be present at that location for efficiently pre-fetching the entire table and not just the header.
+The `legnth hint` specifices how many components **MAY** be present at that location for efficiently pre-fetching the entire table and not just the header.
 
-A reader **MAY** decide not to read the extension table if it has already read the components required by the format. If this is not the case, a reader **MUST** follow the extension, or inform the caller it must do so.
+A reader **MAY** decide not to continue reading the next table if it has already read the components required by the format. If this is not the case, a reader **MUST** read the next table, or inform the caller it must do so.
 
 A reader **MUST** track tables already read, and ignore loops. A reader **MAY** raise a debugging warning when this is encountered.
 
-Formats **MAY** opt to only include the minimal components necessary in the base table, and move all optional and less important components to an extension table, to reduce the base table size for the purpose of "Reducing Round-Trips".
+Formats **MAY** opt to only include the minimal components necessary in the base table, and move all optional and less important components to a table outside the pre-fetch region, to reduce the base table size for the purpose of "Reducing Round-Trips".
 
 ### Inner Data
 

@@ -1,4 +1,4 @@
-//! Daicon low-level types, for zero-copy reading and writing.
+//! Dacti package low-level types, for zero-copy reading and writing.
 //!
 //! This library does not guarantee 100% correctness in input or output, but will provide minimal
 //! validation where useful. In most cases, you should not use this library directly, but instead

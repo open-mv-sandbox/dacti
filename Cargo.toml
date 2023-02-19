@@ -21,4 +21,5 @@ wgpu = "0.15.1"
 dacti-pack = { path = "./crates/dacti-pack" }
 dacti-viewer = { path = "./crates/dacti-viewer" }
 daicon = { path = "./crates/daicon" }
+ptero-pack = { path = "./crates/ptero-pack" }
 wrapmuck = { path = "./crates/wrapmuck" }

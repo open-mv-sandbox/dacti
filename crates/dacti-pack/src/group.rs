@@ -9,12 +9,12 @@ use wrapmuck::Wrapmuck;
 pub struct IndexGroupHeader(IndexGroupHeaderRaw);
 
 impl IndexGroupHeader {
-    pub fn offset(&self) -> u64 {
-        u64::from_le(self.0.offset)
+    pub fn entries_offset(&self) -> u64 {
+        u64::from_le(self.0.entries_offset)
     }
 
-    pub fn set_offset(&mut self, value: u64) {
-        self.0.offset = value.to_le();
+    pub fn set_entries_offset(&mut self, value: u64) {
+        self.0.entries_offset = value.to_le();
     }
 
     pub fn encoding(&self) -> IndexGroupEncoding {
@@ -37,7 +37,7 @@ impl IndexGroupHeader {
 #[derive(Pod, Zeroable, Debug, Clone, Copy)]
 #[repr(C)]
 struct IndexGroupHeaderRaw {
-    offset: u64,
+    entries_offset: u64,
     encoding: [u8; 4],
     length: u8,
     _reserved: [u8; 3],

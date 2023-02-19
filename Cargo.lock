@@ -763,6 +763,12 @@ checksum = "74605f360ce573babfe43964cbe520294dcb081afbf8c108fc6e23036b4da2df"
 [[package]]
 name = "ptero-pack"
 version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "dacti-pack",
+ "daicon",
+ "uuid",
+]
 
 [[package]]
 name = "ptero-pack-cli"
@@ -772,6 +778,7 @@ dependencies = [
  "clap",
  "dacti-pack",
  "daicon",
+ "ptero-pack",
  "tracing",
  "tracing-subscriber",
  "uuid",
