@@ -5,40 +5,37 @@ use std::any::Any;
 use anyhow::Error;
 use tracing::{event, Level};
 
-use crate::{Context, MailboxHandler};
+use crate::{Actor, Context};
 
-pub trait RuntimeContext {
+pub trait RuntimeContext: Send + Sync {
     fn send(&self, mailbox: usize, message: Box<dyn Any + Send>);
 
-    fn add_handler(&self, handler: Box<dyn DowncastMailboxHandler>) -> usize;
-
-    fn add_mailbox(&self, handler: usize, state: Box<dyn Any + Send + Sync>) -> usize;
+    fn add_actor(&self, actor: Box<dyn DowncastActorHandler>) -> usize;
 }
 
 /// Downcasting mailbox executor.
 ///
 /// Decodes messages and handlers back to concrete types, and then calls the handler's mailbox.
-pub trait DowncastMailboxHandler: Send + Sync {
-    fn handle(&self, ctx: &Context, state: &dyn Any, message: Box<dyn Any>) -> Result<(), Error>;
+pub trait DowncastActorHandler: Send + Sync {
+    fn handle(&self, ctx: &Context, message: Box<dyn Any>) -> Result<(), Error>;
 }
 
-pub(crate) struct DowncastMailboxHandlerImpl<H> {
+pub(crate) struct DowncastActorHandlerImpl<H> {
     handler: H,
 }
 
-impl<H: MailboxHandler> DowncastMailboxHandlerImpl<H> {
-    pub fn new(handler: H) -> Self {
-        Self { handler }
+impl<H: Actor> DowncastActorHandlerImpl<H> {
+    pub fn new(handler: H) -> Box<dyn DowncastActorHandler> {
+        Box::new(Self { handler })
     }
 }
 
-impl<H: MailboxHandler> DowncastMailboxHandler for DowncastMailboxHandlerImpl<H> {
-    fn handle(&self, ctx: &Context, state: &dyn Any, message: Box<dyn Any>) -> Result<(), Error> {
-        let state_result = state.downcast_ref::<H::State>();
-        let message_result = message.downcast::<H::Message>();
+impl<H: Actor> DowncastActorHandler for DowncastActorHandlerImpl<H> {
+    fn handle(&self, ctx: &Context, message: Box<dyn Any>) -> Result<(), Error> {
+        let result = message.downcast::<H::Message>();
 
-        match (state_result, message_result) {
-            (Some(state), Ok(message)) => self.handler.handle(ctx, state, *message),
+        match result {
+            Ok(message) => self.handler.handle(ctx, *message),
             _ => {
                 // This is an error with the caller, not the handler.
                 // In fact, this should be prevented by address type guard.
@@ -48,7 +45,7 @@ impl<H: MailboxHandler> DowncastMailboxHandler for DowncastMailboxHandlerImpl<H>
                 event!(
                     Level::ERROR,
                     handler = handler_name,
-                    "failed to downcast message or handler"
+                    "failed to downcast message"
                 );
 
                 Ok(())
