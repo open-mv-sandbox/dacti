@@ -20,10 +20,10 @@ impl Context {
         self.context.send(address.address, Box::new(message));
     }
 
-    /// Create a new handler, and get its address to send messages to it.
-    pub fn add_handler<H: Handler + 'static>(&self, handler: H) -> Address<H::Message> {
+    /// Register a handler, and return the address to send messages to it.
+    pub fn register<H: Handler + 'static>(&self, handler: H) -> Address<H::Message> {
         let handler = Box::new(RuntimeHandlerImpl { handler });
-        let address = self.context.add_handler(handler);
+        let address = self.context.register(handler);
         Address {
             address,
             _p: PhantomData,

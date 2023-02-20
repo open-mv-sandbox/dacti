@@ -990,6 +990,7 @@ dependencies = [
  "crossbeam",
  "sharded-slab",
  "stewart",
+ "tracing",
 ]
 
 [[package]]

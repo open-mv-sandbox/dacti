@@ -7,7 +7,7 @@
 //! This module adds an optional task handlers, which can execute these one-off asynchronous
 //! operations within the actor runtime.
 
-use anyhow::Result;
+use anyhow::{Error, Result};
 use tracing::{event, Level};
 
 use crate::{Context, Handler};
@@ -18,13 +18,16 @@ pub struct ImmediateTaskHandler;
 impl Handler for ImmediateTaskHandler {
     type Message = Task;
 
-    fn handle(&mut self, context: &Context, message: Task) {
+    fn handle(&mut self, context: &Context, message: Task) -> Result<(), Error> {
         let result = (message.task)(context.clone());
 
-        // TODO: Report in some way to the caller where appropriate
+        // Log task failure
+        // TODO: Instead, we should probably notify the calling handler
         if let Err(error) = result {
             event!(Level::ERROR, "error while running task\n{:?}", error);
         }
+
+        Ok(())
     }
 }
 

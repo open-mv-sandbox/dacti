@@ -8,9 +8,10 @@ use std::{
 use crossbeam::queue::SegQueue;
 use sharded_slab::Slab;
 use stewart::{
-    runtime::{RuntimeContext, RuntimeHandler},
+    runtime::{DowncastHandler, RuntimeContext},
     Context,
 };
+use tracing::{event, Level};
 
 // TODO: Run threaded on a thread pool runtime like tokio.
 
@@ -40,8 +41,17 @@ impl Runtime {
         while let Some(message) = self.context_impl.queue.pop() {
             // TODO: Handle failed addressing gracefully
             let handler = self.context_impl.handlers.get(message.address).unwrap();
-            let mut handler = handler.lock().unwrap();
-            handler.handle(&self.context, message.message);
+
+            // Run the handler
+            let result = {
+                let mut handler = handler.lock().unwrap();
+                handler.handle(&self.context, message.message)
+            };
+
+            // TODO: If a handler fails, maybe it should stop/restart the handler?
+            if let Err(error) = result {
+                event!(Level::ERROR, "error in handler\n{:?}", error);
+            }
         }
     }
 }
@@ -49,7 +59,7 @@ impl Runtime {
 #[derive(Default)]
 struct RuntimeContextImpl {
     queue: SegQueue<RuntimeMessage>,
-    handlers: Slab<Mutex<Box<dyn RuntimeHandler>>>,
+    handlers: Slab<Mutex<Box<dyn DowncastHandler>>>,
 }
 
 impl RuntimeContext for RuntimeContextImpl {
@@ -57,7 +67,7 @@ impl RuntimeContext for RuntimeContextImpl {
         self.queue.push(RuntimeMessage { address, message });
     }
 
-    fn add_handler(&self, handler: Box<dyn stewart::runtime::RuntimeHandler>) -> usize {
+    fn register(&self, handler: Box<dyn DowncastHandler>) -> usize {
         // TODO: Graceful error handling
         let handler = Mutex::new(handler);
         self.handlers

@@ -38,7 +38,7 @@ pub fn run(command: AddCommand) -> Result<(), Error> {
 
     // Set up the runtime
     let runtime = Runtime::new();
-    let task_handler = runtime.context().add_handler(ImmediateTaskHandler);
+    let task_handler = runtime.context().register(ImmediateTaskHandler);
 
     // TODO: Error not correctly bubbling up
     let recipe = create_add_data_recipe(package, input, command.uuid);
