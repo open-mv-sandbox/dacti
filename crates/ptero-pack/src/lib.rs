@@ -1,6 +1,4 @@
-//! Pterodactil no-IO dacti reading and writing library.
-//!
-//! TODO: Actually make it no-io.
+//! Pterodactil Bring-Your-Own-IO dacti reading and writing library.
 
 use std::{
     fs::File,
@@ -13,21 +11,36 @@ use dacti_pack::{
     IndexComponentHeader, IndexEntry, IndexGroupEncoding, IndexGroupHeader, INDEX_COMPONENT_UUID,
 };
 use daicon::{ComponentEntry, ComponentTableHeader, RegionData};
+use stewart::{task::Recipe, Context};
+use tracing::{event, Level};
 use uuid::Uuid;
 
-pub fn add_file(package: &mut File, input: &mut File, uuid: Uuid) -> Result<(), Error> {
-    let input_size = input.metadata()?.len();
+pub fn create_add_data_recipe(package: File, data: Vec<u8>, uuid: Uuid) -> Recipe {
+    Recipe::new(move |c| start_add_data_task(c, package, data, uuid))
+}
+
+fn start_add_data_task(
+    _context: Context,
+    mut package: File,
+    data: Vec<u8>,
+    uuid: Uuid,
+) -> Result<(), Error> {
+    event!(Level::DEBUG, "adding data to package");
 
     // The first 64kb is reserved for components and indices
     let data_start = 1024 * 64;
 
-    add_index(package, uuid, data_start as u32, input_size as u32)?;
+    add_index(&mut package, uuid, data_start as u32, data.len() as u32)?;
 
     // Write the file to the package
     package.seek(SeekFrom::Start(data_start))?;
-    std::io::copy(input, package)?;
+    package.write_all(&data)?;
 
     Ok(())
+}
+
+pub enum IoMessage {
+    Write { start: u64, data: Vec<u8> },
 }
 
 fn add_index(package: &mut File, uuid: Uuid, offset: u32, size: u32) -> Result<(), Error> {

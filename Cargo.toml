@@ -7,8 +7,10 @@ anyhow = "1.0.69"
 bytemuck = "1.13.0"
 clap = "4.1.6"
 console_error_panic_hook = "0.1.6"
+crossbeam = "0.8.2"
 js-sys = "0.3.61"
 raw-window-handle = "0.5.0"
+sharded-slab = "0.1.4"
 thiserror = "1.0.38"
 tracing = "0.1.37"
 tracing-subscriber = "0.3.16"
@@ -22,4 +24,6 @@ dacti-pack = { path = "./crates/dacti-pack" }
 dacti-viewer = { path = "./crates/dacti-viewer" }
 daicon = { path = "./crates/daicon" }
 ptero-pack = { path = "./crates/ptero-pack" }
+stewart = { path = "./crates/stewart" }
+stewart-native = { path = "./crates/stewart-native" }
 wrapmuck = { path = "./crates/wrapmuck" }

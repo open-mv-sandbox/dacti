@@ -1,7 +1,10 @@
-use std::fs::{File, OpenOptions};
+use std::fs::OpenOptions;
 
 use anyhow::{Context, Error};
 use clap::Args;
+use ptero_pack::create_add_data_recipe;
+use stewart::task::TaskHandler;
+use stewart_native::Runtime;
 use tracing::{event, Level};
 use uuid::Uuid;
 
@@ -25,15 +28,22 @@ pub fn run(command: AddCommand) -> Result<(), Error> {
     event!(Level::INFO, "adding file to package...");
 
     // Open the target package
-    let mut package = OpenOptions::new()
+    let package = OpenOptions::new()
         .read(true)
         .write(true)
         .open(command.package)
         .context("failed to open target package for writing")?;
 
-    let mut input = File::open(&command.input)?;
+    let input = std::fs::read(&command.input)?;
 
-    ptero_pack::add_file(&mut package, &mut input, command.uuid)?;
+    // Set up the runtime
+    let runtime = Runtime::new();
+    let task_handler = runtime.add_handler(TaskHandler);
+
+    // TODO: Error not correctly bubbling up
+    let recipe = create_add_data_recipe(package, input, command.uuid);
+    runtime.send(task_handler, recipe);
+    runtime.block_execute();
 
     Ok(())
 }
