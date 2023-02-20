@@ -87,9 +87,6 @@ impl Actor for FileRwHandler {
                 file.seek(SeekFrom::Start(start))?;
                 file.write_all(&data)?;
             }
-            RwMessage::RunOnFile { callback } => {
-                callback(&mut file)?;
-            }
         }
 
         Ok(())
