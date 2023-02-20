@@ -1,33 +1,60 @@
 //! Backing types for implementing a runtime.
 
-use std::any::Any;
+use std::{any::Any, marker::PhantomData, sync::atomic::AtomicPtr};
 
 use anyhow::Error;
 use tracing::{event, Level};
 
-use crate::{Context, Handler};
+use crate::{Context, Mailbox};
 
 pub trait RuntimeContext {
     fn send(&self, address: usize, message: Box<dyn Any + Send>);
 
-    fn register(&self, handler: Box<dyn DowncastHandler>) -> usize;
+    fn register_handler(&self, handler: Box<dyn Any>) -> usize;
+
+    fn register_mailbox(&self, handler: usize, executor: Box<dyn MailboxDowncastExecutor>)
+        -> usize;
 }
 
-/// Dynamic downcasting handler, to allow handlers to be sent across dynamic boundaries.
-pub trait DowncastHandler: Send + Sync {
-    fn handle(&mut self, ctx: &Context, message: Box<dyn Any>) -> Result<(), Error>;
+/// Downcasting mailbox executor.
+///
+/// Decodes messages and handlers back to concrete types, and then calls the handler's mailbox.
+pub trait MailboxDowncastExecutor: Send + Sync {
+    fn handle(
+        &self,
+        ctx: &Context,
+        handler: &mut dyn Any,
+        message: Box<dyn Any>,
+    ) -> Result<(), Error>;
 }
 
-pub(crate) struct RuntimeHandlerImpl<H> {
-    pub handler: H,
+pub(crate) struct MailboxDowncastExecutorImpl<M: Any, H: Mailbox<M>> {
+    _m: PhantomData<AtomicPtr<M>>,
+    _h: PhantomData<AtomicPtr<H>>,
 }
 
-impl<H: Handler> DowncastHandler for RuntimeHandlerImpl<H> {
-    fn handle(&mut self, ctx: &Context, message: Box<dyn Any>) -> Result<(), Error> {
-        let result = message.downcast::<H::Message>();
-        match result {
-            Ok(message) => self.handler.handle(ctx, *message),
-            Err(_) => {
+impl<M: Any, H: Mailbox<M>> Default for MailboxDowncastExecutorImpl<M, H> {
+    fn default() -> Self {
+        Self {
+            _m: PhantomData,
+            _h: PhantomData,
+        }
+    }
+}
+
+impl<M: Any, H: Mailbox<M>> MailboxDowncastExecutor for MailboxDowncastExecutorImpl<M, H> {
+    fn handle(
+        &self,
+        ctx: &Context,
+        handler: &mut dyn Any,
+        message: Box<dyn Any>,
+    ) -> Result<(), Error> {
+        let handler_result = handler.downcast_mut::<H>();
+        let message_result = message.downcast::<M>();
+
+        match (handler_result, message_result) {
+            (Some(handler), Ok(message)) => handler.handle(ctx, *message),
+            _ => {
                 // This is an error with the caller, not the handler.
                 // In fact, this should be prevented by address type guard.
                 // If this does happen, figure out why and fix or document it.
@@ -36,7 +63,7 @@ impl<H: Handler> DowncastHandler for RuntimeHandlerImpl<H> {
                 event!(
                     Level::ERROR,
                     handler = handler_name,
-                    "failed to downcast message for handler"
+                    "failed to downcast message or handler"
                 );
 
                 Ok(())

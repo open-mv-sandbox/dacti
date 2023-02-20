@@ -16,12 +16,12 @@ use tracing::{event, Level};
 use uuid::Uuid;
 
 pub fn create_add_data_task(
-    task_handler: Address<Task>,
-    package_handler: Address<RwMessage>,
+    task_addr: Address<Task>,
+    package_addr: Address<RwMessage>,
     data: Vec<u8>,
     uuid: Uuid,
 ) -> Task {
-    Task::new(move |c| add_data_task(c, task_handler, package_handler, data, uuid))
+    Task::new(move |c| add_data_task(c, task_addr, package_addr, data, uuid))
 }
 
 fn add_data_task(

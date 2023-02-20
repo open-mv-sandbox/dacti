@@ -10,14 +10,12 @@
 use anyhow::{Error, Result};
 use tracing::{event, Level};
 
-use crate::{Context, Handler};
+use crate::{Context, Mailbox};
 
 /// Task handler that executes a task immediately on the same thread.
 pub struct ImmediateTaskHandler;
 
-impl Handler for ImmediateTaskHandler {
-    type Message = Task;
-
+impl Mailbox<Task> for ImmediateTaskHandler {
     fn handle(&mut self, context: &Context, message: Task) -> Result<(), Error> {
         let result = (message.task)(context.clone());
 

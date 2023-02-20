@@ -6,7 +6,7 @@ use std::{
 use anyhow::{Context as ContextExt, Error};
 use clap::Args;
 use ptero_pack::{create_add_data_task, RwMessage};
-use stewart::{task::ImmediateTaskHandler, Context, Handler};
+use stewart::{task::ImmediateTaskHandler, Context, Mailbox};
 use stewart_native::Runtime;
 use tracing::{event, Level};
 use uuid::Uuid;
@@ -35,14 +35,14 @@ pub fn run(command: AddCommand) -> Result<(), Error> {
     // Set up the runtime
     let runtime = Runtime::new();
     let ctx = runtime.context().clone();
-    let task_handler = ctx.register(ImmediateTaskHandler);
+    let task_addr = ctx.add_one(ImmediateTaskHandler);
 
     // Add the package IO handler
-    let package_handler = ctx.register(FileRwHandler::new(&command.package)?);
+    let package_addr = ctx.add_one(FileRwHandler::new(&command.package)?);
 
     // Start the add task
-    let task = create_add_data_task(task_handler, package_handler, input, command.uuid);
-    runtime.context().send(task_handler, task);
+    let task = create_add_data_task(task_addr, package_addr, input, command.uuid);
+    runtime.context().send(task_addr, task);
 
     // Run until we're done
     runtime.block_execute();
@@ -69,9 +69,7 @@ impl FileRwHandler {
     }
 }
 
-impl Handler for FileRwHandler {
-    type Message = RwMessage;
-
+impl Mailbox<RwMessage> for FileRwHandler {
     fn handle(&mut self, _ctx: &Context, message: RwMessage) -> Result<(), Error> {
         match message {
             RwMessage::Write { start, data } => {

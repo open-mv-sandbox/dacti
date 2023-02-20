@@ -4,13 +4,18 @@
 //! executors.
 
 mod context;
-mod handler;
 pub mod runtime;
 pub mod task;
 
-use std::marker::PhantomData;
+use std::{any::Any, marker::PhantomData};
 
-pub use self::{context::Context, handler::Handler};
+use anyhow::Error;
+
+pub use self::context::Context;
+
+pub trait Mailbox<M: Any>: Send + Sync + 'static {
+    fn handle(&mut self, ctx: &Context, message: M) -> Result<(), Error>;
+}
 
 pub struct Address<M> {
     address: usize,
