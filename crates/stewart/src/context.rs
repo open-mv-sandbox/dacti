@@ -1,8 +1,8 @@
 use std::{any::Any, marker::PhantomData, sync::Arc};
 
 use crate::{
-    runtime::{MailboxDowncastExecutorImpl, RuntimeContext},
-    Address, Mailbox,
+    runtime::{DowncastMailboxHandlerImpl, RuntimeContext},
+    Address, HandlerAddress, MailboxHandler,
 };
 
 #[derive(Clone)]
@@ -15,55 +15,38 @@ impl Context {
         Self { context }
     }
 
-    /// Add a handler.
-    ///
-    /// Returns a type-safe builder for adding mailboxes to the handler.
-    pub fn add<H: Any + Send + Sync>(&self, handler: H) -> HandlerBuilder<H> {
-        let id = self.context.register_handler(Box::new(handler));
-        HandlerBuilder {
-            context: self,
-            id,
-            _h: PhantomData,
+    /// Add a mailbox handler implementation.
+    pub fn add_handler<H: MailboxHandler>(&self, handler: H) -> HandlerAddress<H::Message> {
+        let handler = DowncastMailboxHandlerImpl::new(handler);
+        let handler = self.context.add_handler(Box::new(handler));
+
+        HandlerAddress {
+            handler,
+            _p: PhantomData,
         }
     }
 
-    /// Convenience helper for registering a handler with only one mailbox.
-    ///
-    /// Equivalent to `register(handler).add()`
-    pub fn add_one<M: Any + Send, H: Mailbox<M>>(&self, handler: H) -> Address<M> {
-        self.add(handler).add()
+    /// Add a mailbox, linking handler to state.
+    pub fn add_mailbox<M: Any, S: Any + Send + Sync>(
+        &self,
+        handler: HandlerAddress<M>,
+        state: S,
+    ) -> Address<M> {
+        let mailbox = self.context.add_mailbox(handler.handler, Box::new(state));
+        Address {
+            mailbox,
+            _p: PhantomData,
+        }
+    }
+
+    /// Add a handler and immediately get a singular mailbox for it.
+    pub fn add_one<H: MailboxHandler>(&self, handler: H, state: H::State) -> Address<H::Message> {
+        let handler = self.add_handler(handler);
+        self.add_mailbox(handler, state)
     }
 
     /// Send a message to the handler at the address.
     pub fn send<M: Any + Send>(&self, address: Address<M>, message: M) {
-        self.context.send(address.address, Box::new(message));
-    }
-}
-
-pub struct HandlerBuilder<'a, H: 'static> {
-    context: &'a Context,
-    id: usize,
-    _h: PhantomData<H>,
-}
-
-impl<'a, H> HandlerBuilder<'a, H> {
-    /// Register a dynamic mailbox, which relays messages to a handler.
-    pub fn add<M: Any + Send>(&self) -> Address<M>
-    where
-        H: Mailbox<M>,
-    {
-        // TODO: Can we re-use executors, and will it help performance?
-        // Maybe 'handlers' are an abstract runtime system, and users just specify
-        // state + mailboxes?
-
-        let executor = MailboxDowncastExecutorImpl::<M, H>::default();
-        let address = self
-            .context
-            .context
-            .register_mailbox(self.id, Box::new(executor));
-        Address {
-            address,
-            _p: PhantomData,
-        }
+        self.context.send(address.mailbox, Box::new(message));
     }
 }

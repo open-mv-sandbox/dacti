@@ -1,14 +1,11 @@
 //! Native runtime for stewart.
 
-use std::{
-    any::Any,
-    sync::{Arc, Mutex},
-};
+use std::{any::Any, sync::Arc};
 
 use crossbeam::queue::SegQueue;
 use sharded_slab::Slab;
 use stewart::{
-    runtime::{MailboxDowncastExecutor, RuntimeContext},
+    runtime::{DowncastMailboxHandler, RuntimeContext},
     Context,
 };
 use tracing::{event, Level};
@@ -64,13 +61,7 @@ impl Runtime {
         };
 
         // Run the handler
-        let result = {
-            let mut handler = handler.lock().unwrap();
-            let result = mailbox
-                .executor
-                .handle(&self.context, handler.as_mut(), message.message);
-            result
-        };
+        let result = handler.handle(&self.context, mailbox.state.as_ref(), message.message);
 
         // TODO: If a handler fails, maybe it should stop/restart the handler?
         if let Err(error) = result {
@@ -82,7 +73,7 @@ impl Runtime {
 #[derive(Default)]
 struct RuntimeContextImpl {
     queue: SegQueue<Message>,
-    handlers: Slab<Mutex<Box<dyn Any>>>,
+    handlers: Slab<Box<dyn DowncastMailboxHandler>>,
     mailboxes: Slab<Mailbox>,
 }
 
@@ -91,21 +82,14 @@ impl RuntimeContext for RuntimeContextImpl {
         self.queue.push(Message { address, message });
     }
 
-    fn register_handler(&self, handler: Box<dyn Any>) -> usize {
-        // TODO: Graceful error handling
-        let handler = Mutex::new(handler);
+    fn add_handler(&self, handler: Box<dyn DowncastMailboxHandler>) -> usize {
         self.handlers
             .insert(handler)
             .expect("unable to insert new handler")
     }
 
-    fn register_mailbox(
-        &self,
-        handler: usize,
-        executor: Box<dyn MailboxDowncastExecutor>,
-    ) -> usize {
-        // TODO: Graceful error handling
-        let mailbox = Mailbox { handler, executor };
+    fn add_mailbox(&self, handler: usize, state: Box<dyn Any + Send + Sync>) -> usize {
+        let mailbox = Mailbox { handler, state };
         self.mailboxes
             .insert(mailbox)
             .expect("unable to insert new mailbox")
@@ -119,5 +103,5 @@ struct Message {
 
 struct Mailbox {
     handler: usize,
-    executor: Box<dyn MailboxDowncastExecutor>,
+    state: Box<dyn Any + Send + Sync>,
 }

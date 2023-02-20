@@ -10,14 +10,17 @@
 use anyhow::{Error, Result};
 use tracing::{event, Level};
 
-use crate::{Context, Mailbox};
+use crate::{Context, MailboxHandler};
 
 /// Task handler that executes a task immediately on the same thread.
 pub struct ImmediateTaskHandler;
 
-impl Mailbox<Task> for ImmediateTaskHandler {
-    fn handle(&mut self, context: &Context, message: Task) -> Result<(), Error> {
-        let result = (message.task)(context.clone());
+impl MailboxHandler for ImmediateTaskHandler {
+    type State = ();
+    type Message = Task;
+
+    fn handle(&self, ctx: &Context, _state: &(), message: Task) -> Result<(), Error> {
+        let result = (message.task)(ctx.clone());
 
         // Log task failure
         // TODO: Instead, we should probably notify the calling handler

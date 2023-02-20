@@ -1,12 +1,13 @@
 use std::{
     fs::{File, OpenOptions},
     io::{Seek, SeekFrom, Write},
+    sync::Mutex,
 };
 
-use anyhow::{Context as ContextExt, Error};
+use anyhow::{anyhow, Context as ContextExt, Error};
 use clap::Args;
 use ptero_pack::{create_add_data_task, RwMessage};
-use stewart::{task::ImmediateTaskHandler, Context, Mailbox};
+use stewart::{task::ImmediateTaskHandler, Context, MailboxHandler};
 use stewart_native::Runtime;
 use tracing::{event, Level};
 use uuid::Uuid;
@@ -30,15 +31,20 @@ pub struct AddCommand {
 pub fn run(command: AddCommand) -> Result<(), Error> {
     event!(Level::INFO, "adding file to package...");
 
+    let package = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(command.package)
+        .context("failed to open target package for writing")?;
     let input = std::fs::read(&command.input)?;
 
     // Set up the runtime
     let runtime = Runtime::new();
     let ctx = runtime.context().clone();
-    let task_addr = ctx.add_one(ImmediateTaskHandler);
+    let task_addr = ctx.add_one(ImmediateTaskHandler, ());
 
     // Add the package IO handler
-    let package_addr = ctx.add_one(FileRwHandler::new(&command.package)?);
+    let package_addr = ctx.add_one(FileRwHandler, Mutex::new(package));
 
     // Start the add task
     let task = create_add_data_task(task_addr, package_addr, input, command.uuid);
@@ -53,31 +59,22 @@ pub fn run(command: AddCommand) -> Result<(), Error> {
     Ok(())
 }
 
-struct FileRwHandler {
-    file: File,
-}
+struct FileRwHandler;
 
-impl FileRwHandler {
-    pub fn new(path: &str) -> Result<Self, Error> {
-        let file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open(path)
-            .context("failed to open target package for writing")?;
+impl MailboxHandler for FileRwHandler {
+    type State = Mutex<File>;
+    type Message = RwMessage;
 
-        Ok(Self { file })
-    }
-}
+    fn handle(&self, _ctx: &Context, state: &Mutex<File>, message: RwMessage) -> Result<(), Error> {
+        let mut file = state.lock().map_err(|_| anyhow!("lock poisoned"))?;
 
-impl Mailbox<RwMessage> for FileRwHandler {
-    fn handle(&mut self, _ctx: &Context, message: RwMessage) -> Result<(), Error> {
         match message {
             RwMessage::Write { start, data } => {
-                self.file.seek(SeekFrom::Start(start))?;
-                self.file.write_all(&data)?;
+                file.seek(SeekFrom::Start(start))?;
+                file.write_all(&data)?;
             }
             RwMessage::RunOnFile { callback } => {
-                callback(&mut self.file)?;
+                callback(&mut file)?;
             }
         }
 
