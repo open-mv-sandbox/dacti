@@ -39,19 +39,30 @@ impl Runtime {
     /// Execute handlers until no messages remain.
     pub fn block_execute(&self) {
         while let Some(message) = self.context_impl.queue.pop() {
-            // TODO: Handle failed addressing gracefully
-            let handler = self.context_impl.handlers.get(message.address).unwrap();
+            self.handle_message(message);
+        }
+    }
 
-            // Run the handler
-            let result = {
-                let mut handler = handler.lock().unwrap();
-                handler.handle(&self.context, message.message)
-            };
-
-            // TODO: If a handler fails, maybe it should stop/restart the handler?
-            if let Err(error) = result {
-                event!(Level::ERROR, "error in handler\n{:?}", error);
+    fn handle_message(&self, message: RuntimeMessage) {
+        // TODO: Send addressing error back to handler
+        let result = self.context_impl.handlers.get(message.address);
+        let handler = match result {
+            Some(handler) => handler,
+            None => {
+                event!(Level::ERROR, "failed to find handler at address");
+                return;
             }
+        };
+
+        // Run the handler
+        let result = {
+            let mut handler = handler.lock().unwrap();
+            handler.handle(&self.context, message.message)
+        };
+
+        // TODO: If a handler fails, maybe it should stop/restart the handler?
+        if let Err(error) = result {
+            event!(Level::ERROR, "error in handler\n{:?}", error);
         }
     }
 }

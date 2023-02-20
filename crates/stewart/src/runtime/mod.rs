@@ -15,7 +15,7 @@ pub trait RuntimeContext {
 
 /// Dynamic downcasting handler, to allow handlers to be sent across dynamic boundaries.
 pub trait DowncastHandler: Send + Sync {
-    fn handle(&mut self, context: &Context, message: Box<dyn Any>) -> Result<(), Error>;
+    fn handle(&mut self, ctx: &Context, message: Box<dyn Any>) -> Result<(), Error>;
 }
 
 pub(crate) struct RuntimeHandlerImpl<H> {
@@ -23,10 +23,10 @@ pub(crate) struct RuntimeHandlerImpl<H> {
 }
 
 impl<H: Handler> DowncastHandler for RuntimeHandlerImpl<H> {
-    fn handle(&mut self, context: &Context, message: Box<dyn Any>) -> Result<(), Error> {
+    fn handle(&mut self, ctx: &Context, message: Box<dyn Any>) -> Result<(), Error> {
         let result = message.downcast::<H::Message>();
         match result {
-            Ok(message) => self.handler.handle(context, *message),
+            Ok(message) => self.handler.handle(ctx, *message),
             Err(_) => {
                 // This is an error with the caller, not the handler.
                 // In fact, this should be prevented by address type guard.

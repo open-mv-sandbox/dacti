@@ -11,17 +11,23 @@ use dacti_pack::{
     IndexComponentHeader, IndexEntry, IndexGroupEncoding, IndexGroupHeader, INDEX_COMPONENT_UUID,
 };
 use daicon::{ComponentEntry, ComponentTableHeader, RegionData};
-use stewart::{task::Task, Context};
+use stewart::{task::Task, Address, Context};
 use tracing::{event, Level};
 use uuid::Uuid;
 
-pub fn create_add_data_recipe(package: File, data: Vec<u8>, uuid: Uuid) -> Task {
-    Task::new(move |c| start_add_data_task(c, package, data, uuid))
+pub fn create_add_data_task(
+    task_handler: Address<Task>,
+    package_handler: Address<RwMessage>,
+    data: Vec<u8>,
+    uuid: Uuid,
+) -> Task {
+    Task::new(move |c| add_data_task(c, task_handler, package_handler, data, uuid))
 }
 
-fn start_add_data_task(
-    _context: Context,
-    mut package: File,
+fn add_data_task(
+    ctx: Context,
+    _task_handler: Address<Task>,
+    package_handler: Address<RwMessage>,
     data: Vec<u8>,
     uuid: Uuid,
 ) -> Result<(), Error> {
@@ -29,18 +35,32 @@ fn start_add_data_task(
 
     // The first 64kb is reserved for components and indices
     let data_start = 1024 * 64;
+    let data_len = data.len() as u32;
 
-    add_index(&mut package, uuid, data_start as u32, data.len() as u32)?;
+    let msg = RwMessage::RunOnFile {
+        callback: Box::new(move |p| add_index(p, uuid, data_start as u32, data_len)),
+    };
+    ctx.send(package_handler, msg);
 
     // Write the file to the package
-    package.seek(SeekFrom::Start(data_start))?;
-    package.write_all(&data)?;
+    let msg = RwMessage::Write {
+        start: data_start,
+        data,
+    };
+    ctx.send(package_handler, msg);
 
     Ok(())
 }
 
-pub enum IoMessage {
-    Write { start: u64, data: Vec<u8> },
+pub enum RwMessage {
+    Write {
+        start: u64,
+        data: Vec<u8>,
+    },
+    /// Placeholder message, will be removed once transition to messages is done
+    RunOnFile {
+        callback: Box<dyn FnOnce(&mut File) -> Result<(), Error> + Send>,
+    },
 }
 
 fn add_index(package: &mut File, uuid: Uuid, offset: u32, size: u32) -> Result<(), Error> {

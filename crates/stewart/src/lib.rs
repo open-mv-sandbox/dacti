@@ -16,3 +16,11 @@ pub struct Address<M> {
     address: usize,
     _p: PhantomData<M>,
 }
+
+impl<M> Clone for Address<M> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<M> Copy for Address<M> {}

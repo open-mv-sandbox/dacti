@@ -31,7 +31,7 @@ impl Handler for ImmediateTaskHandler {
     }
 }
 
-/// Wrapping container for any task.
+/// Wrapping container for a task function.
 pub struct Task {
     task: Box<dyn FnOnce(Context) -> Result<()> + Send>,
 }

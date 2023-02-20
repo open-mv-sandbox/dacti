@@ -1,9 +1,12 @@
-use std::fs::OpenOptions;
+use std::{
+    fs::{File, OpenOptions},
+    io::{Seek, SeekFrom, Write},
+};
 
-use anyhow::{Context, Error};
+use anyhow::{Context as ContextExt, Error};
 use clap::Args;
-use ptero_pack::create_add_data_recipe;
-use stewart::task::ImmediateTaskHandler;
+use ptero_pack::{create_add_data_task, RwMessage};
+use stewart::{task::ImmediateTaskHandler, Context, Handler};
 use stewart_native::Runtime;
 use tracing::{event, Level};
 use uuid::Uuid;
@@ -27,23 +30,59 @@ pub struct AddCommand {
 pub fn run(command: AddCommand) -> Result<(), Error> {
     event!(Level::INFO, "adding file to package...");
 
-    // Open the target package
-    let package = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .open(command.package)
-        .context("failed to open target package for writing")?;
-
     let input = std::fs::read(&command.input)?;
 
     // Set up the runtime
     let runtime = Runtime::new();
-    let task_handler = runtime.context().register(ImmediateTaskHandler);
+    let ctx = runtime.context().clone();
+    let task_handler = ctx.register(ImmediateTaskHandler);
 
-    // TODO: Error not correctly bubbling up
-    let recipe = create_add_data_recipe(package, input, command.uuid);
-    runtime.context().send(task_handler, recipe);
+    // Add the package IO handler
+    let package_handler = ctx.register(FileRwHandler::new(&command.package)?);
+
+    // Start the add task
+    let task = create_add_data_task(task_handler, package_handler, input, command.uuid);
+    runtime.context().send(task_handler, task);
+
+    // Run until we're done
     runtime.block_execute();
 
+    // TODO: Stewart doesn't currently bubble up errors for us to catch, and we need those for the
+    // correct error code.
+
     Ok(())
+}
+
+struct FileRwHandler {
+    file: File,
+}
+
+impl FileRwHandler {
+    pub fn new(path: &str) -> Result<Self, Error> {
+        let file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(path)
+            .context("failed to open target package for writing")?;
+
+        Ok(Self { file })
+    }
+}
+
+impl Handler for FileRwHandler {
+    type Message = RwMessage;
+
+    fn handle(&mut self, _ctx: &Context, message: RwMessage) -> Result<(), Error> {
+        match message {
+            RwMessage::Write { start, data } => {
+                self.file.seek(SeekFrom::Start(start))?;
+                self.file.write_all(&data)?;
+            }
+            RwMessage::RunOnFile { callback } => {
+                callback(&mut self.file)?;
+            }
+        }
+
+        Ok(())
+    }
 }

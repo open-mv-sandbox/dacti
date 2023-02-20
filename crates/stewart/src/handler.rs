@@ -7,5 +7,5 @@ use crate::Context;
 pub trait Handler: Send + Sync {
     type Message: Any;
 
-    fn handle(&mut self, context: &Context, message: Self::Message) -> Result<(), Error>;
+    fn handle(&mut self, ctx: &Context, message: Self::Message) -> Result<(), Error>;
 }
