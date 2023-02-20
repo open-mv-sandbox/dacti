@@ -3,7 +3,7 @@ use std::fs::OpenOptions;
 use anyhow::{Context, Error};
 use clap::Args;
 use ptero_pack::create_add_data_recipe;
-use stewart::task::TaskHandler;
+use stewart::task::ImmediateTaskHandler;
 use stewart_native::Runtime;
 use tracing::{event, Level};
 use uuid::Uuid;
@@ -38,11 +38,11 @@ pub fn run(command: AddCommand) -> Result<(), Error> {
 
     // Set up the runtime
     let runtime = Runtime::new();
-    let task_handler = runtime.add_handler(TaskHandler);
+    let task_handler = runtime.context().add_handler(ImmediateTaskHandler);
 
     // TODO: Error not correctly bubbling up
     let recipe = create_add_data_recipe(package, input, command.uuid);
-    runtime.send(task_handler, recipe);
+    runtime.context().send(task_handler, recipe);
     runtime.block_execute();
 
     Ok(())

@@ -7,83 +7,66 @@ use std::{
 
 use crossbeam::queue::SegQueue;
 use sharded_slab::Slab;
-use stewart::{Address, Context, Handler, Mailbox};
+use stewart::{
+    runtime::{RuntimeContext, RuntimeHandler},
+    Context,
+};
 
 // TODO: Run threaded on a thread pool runtime like tokio.
 
 /// Local blocking handler execution runtime.
 pub struct Runtime {
-    mailbox: Arc<MailboxImpl>,
+    context_impl: Arc<RuntimeContextImpl>,
     context: Context,
-    handlers: Slab<Mutex<Box<dyn DynHandler>>>,
 }
 
 impl Runtime {
     pub fn new() -> Self {
-        let mailbox = Arc::new(MailboxImpl::default());
-        let context = Context::new(mailbox.clone());
+        let context_impl = Arc::new(RuntimeContextImpl::default());
+        let context = Context::from_runtime(context_impl.clone());
 
         Self {
-            mailbox,
+            context_impl,
             context,
-            handlers: Slab::new(),
         }
     }
 
-    pub fn add_handler<H: Handler + 'static>(&self, handler: H) -> Address<H::Message> {
-        let handler = wrap_handler(handler);
-        let address = self.handlers.insert(handler).unwrap();
-        Address::from_raw(address)
-    }
-
-    pub fn send<M: Any>(&self, address: Address<M>, message: M) {
-        self.context.send(address, message);
+    pub fn context(&self) -> &Context {
+        &self.context
     }
 
     /// Execute handlers until no messages remain.
     pub fn block_execute(&self) {
-        while let Some(message) = self.mailbox.queue.pop() {
+        while let Some(message) = self.context_impl.queue.pop() {
             // TODO: Handle failed addressing gracefully
-            let handler = self.handlers.get(message.address).unwrap();
+            let handler = self.context_impl.handlers.get(message.address).unwrap();
             let mut handler = handler.lock().unwrap();
             handler.handle(&self.context, message.message);
         }
     }
 }
 
-fn wrap_handler<H: Handler + 'static>(handler: H) -> Mutex<Box<dyn DynHandler>> {
-    Mutex::new(Box::new(DynHandlerImpl { handler }))
-}
-
-trait DynHandler {
-    fn handle(&mut self, context: &Context, message: Box<dyn Any>);
-}
-
-struct DynHandlerImpl<H> {
-    handler: H,
-}
-
-impl<H: Handler> DynHandler for DynHandlerImpl<H> {
-    fn handle(&mut self, context: &Context, message: Box<dyn Any>) {
-        // TODO: Handle failed downcast gracefully
-        let message = *message.downcast().expect("failed to downcast message");
-        self.handler.handle(context, message);
-    }
-}
-
 #[derive(Default)]
-struct MailboxImpl {
-    queue: SegQueue<Envelope>,
+struct RuntimeContextImpl {
+    queue: SegQueue<RuntimeMessage>,
+    handlers: Slab<Mutex<Box<dyn RuntimeHandler>>>,
 }
 
-impl Mailbox for MailboxImpl {
-    fn send(&self, address: usize, message: Box<dyn Any>) {
-        let envelope = Envelope { address, message };
-        self.queue.push(envelope);
+impl RuntimeContext for RuntimeContextImpl {
+    fn send(&self, address: usize, message: Box<dyn Any + Send>) {
+        self.queue.push(RuntimeMessage { address, message });
+    }
+
+    fn add_handler(&self, handler: Box<dyn stewart::runtime::RuntimeHandler>) -> usize {
+        // TODO: Graceful error handling
+        let handler = Mutex::new(handler);
+        self.handlers
+            .insert(handler)
+            .expect("unable to insert new handler")
     }
 }
 
-struct Envelope {
+struct RuntimeMessage {
     address: usize,
-    message: Box<dyn Any>,
+    message: Box<dyn Any + Send>,
 }

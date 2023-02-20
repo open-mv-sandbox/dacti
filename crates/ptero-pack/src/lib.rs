@@ -11,12 +11,12 @@ use dacti_pack::{
     IndexComponentHeader, IndexEntry, IndexGroupEncoding, IndexGroupHeader, INDEX_COMPONENT_UUID,
 };
 use daicon::{ComponentEntry, ComponentTableHeader, RegionData};
-use stewart::{task::Recipe, Context};
+use stewart::{task::Task, Context};
 use tracing::{event, Level};
 use uuid::Uuid;
 
-pub fn create_add_data_recipe(package: File, data: Vec<u8>, uuid: Uuid) -> Recipe {
-    Recipe::new(move |c| start_add_data_task(c, package, data, uuid))
+pub fn create_add_data_recipe(package: File, data: Vec<u8>, uuid: Uuid) -> Task {
+    Task::new(move |c| start_add_data_task(c, package, data, uuid))
 }
 
 fn start_add_data_task(
