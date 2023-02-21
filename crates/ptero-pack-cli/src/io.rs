@@ -6,7 +6,10 @@ use std::{
 
 use anyhow::{anyhow, Context, Error};
 use ptero_pack::io::RwMessage;
-use stewart::{handler::Handler, ActorOps, Address};
+use stewart::{
+    handler::{Handler, Next},
+    ActorOps, Address,
+};
 use stewart_runtime::StartActor;
 
 pub fn file_actor(path: String, reply: Address<Address<RwMessage>>) -> StartActor {
@@ -33,7 +36,7 @@ struct FileRwHandler {
 impl Handler for FileRwHandler {
     type Message = RwMessage;
 
-    fn handle(&self, ops: &dyn ActorOps, message: RwMessage) -> Result<(), Error> {
+    fn handle(&self, ops: &dyn ActorOps, message: RwMessage) -> Result<Next, Error> {
         let mut file = self.file.lock().map_err(|_| anyhow!("lock poisoned"))?;
 
         match message {
@@ -55,6 +58,6 @@ impl Handler for FileRwHandler {
             }
         }
 
-        Ok(())
+        Ok(Next::Continue)
     }
 }

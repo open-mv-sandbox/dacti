@@ -2,7 +2,10 @@ use std::any::Any;
 
 use crossbeam::queue::SegQueue;
 use sharded_slab::Slab;
-use stewart::{handler::AnyHandler, ActorOps, Address};
+use stewart::{
+    handler::{AnyHandler, Next},
+    ActorOps, Address,
+};
 use stewart_runtime::StartActor;
 use tracing::{event, Level};
 
@@ -62,9 +65,19 @@ impl Runtime {
         let ops = NativeActorOps { runtime: self };
         let result = actor.handle(&ops, message.message);
 
-        // TODO: If a handler fails, maybe it should stop/restart the handler?
-        if let Err(error) = result {
-            event!(Level::ERROR, "error in handler\n{:?}", error);
+        // TODO: What should we do with the error?
+        let next = match result {
+            Ok(next) => next,
+            Err(error) => {
+                event!(Level::ERROR, "error in handler\n{:?}", error);
+                return;
+            }
+        };
+
+        // If the handler wants to remove itself, remove it
+        if next == Next::Stop {
+            event!(Level::TRACE, "removing handler");
+            self.handlers.remove(message.address);
         }
     }
 }
@@ -76,6 +89,7 @@ struct NativeActorOps<'a> {
 
 impl<'a> ActorOps for NativeActorOps<'a> {
     fn add_handler_any(&self, handler: Box<dyn AnyHandler>) -> usize {
+        event!(Level::TRACE, "adding handler");
         self.runtime
             .handlers
             .insert(handler)

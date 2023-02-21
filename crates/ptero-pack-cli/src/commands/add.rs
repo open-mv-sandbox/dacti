@@ -1,7 +1,10 @@
 use anyhow::Error;
 use clap::Args;
 use ptero_pack::{io::RwMessage, package_add_data};
-use stewart::{handler::Handler, ActorOps, Address};
+use stewart::{
+    handler::{Handler, Next},
+    ActorOps, Address,
+};
 use stewart_runtime::StartActor;
 use tracing::{event, Level};
 use uuid::Uuid;
@@ -51,7 +54,7 @@ struct ReadyHandler {
 impl Handler for ReadyHandler {
     type Message = Address<RwMessage>;
 
-    fn handle(&self, ops: &dyn ActorOps, message: Self::Message) -> Result<(), Error> {
+    fn handle(&self, ops: &dyn ActorOps, message: Self::Message) -> Result<Next, Error> {
         let package_addr = message;
 
         // TODO: Could we do a once-handler that takes by value?
@@ -59,6 +62,6 @@ impl Handler for ReadyHandler {
         let msg = StartActor::new(move |ops| package_add_data(ops, package_addr, input, uuid));
         ops.send(self.start_addr, msg);
 
-        Ok(())
+        Ok(Next::Stop)
     }
 }

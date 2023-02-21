@@ -6,7 +6,10 @@ use std::{
 
 use anyhow::{bail, Error};
 use daicon::{ComponentEntry, ComponentTableHeader, SIGNATURE};
-use stewart::{handler::Handler, ActorOps, Address};
+use stewart::{
+    handler::{Handler, Next},
+    ActorOps, Address,
+};
 use uuid::Uuid;
 
 use crate::io::{ReadResult, RwMessage};
@@ -53,7 +56,7 @@ impl ReadHeaderStep {
 impl Handler for ReadHeaderStep {
     type Message = ReadResult;
 
-    fn handle(&self, ops: &dyn ActorOps, message: ReadResult) -> Result<(), Error> {
+    fn handle(&self, ops: &dyn ActorOps, message: ReadResult) -> Result<Next, Error> {
         let data = message?;
 
         // Validate signature
@@ -70,8 +73,7 @@ impl Handler for ReadHeaderStep {
         // Read the data under the table
         ReadEntriesStep::start(ops, self.task.clone(), header_location, header);
 
-        // TODO: Clean up handler after completion
-        Ok(())
+        Ok(Next::Stop)
     }
 }
 
@@ -102,7 +104,7 @@ impl ReadEntriesStep {
 impl Handler for ReadEntriesStep {
     type Message = ReadResult;
 
-    fn handle(&self, ops: &dyn ActorOps, message: ReadResult) -> Result<(), Error> {
+    fn handle(&self, ops: &dyn ActorOps, message: ReadResult) -> Result<Next, Error> {
         let data = message?;
 
         let mut entry = ComponentEntry::zeroed();
@@ -120,8 +122,7 @@ impl Handler for ReadEntriesStep {
             let address = 8 + size_of::<ComponentTableHeader>() as u64 + data.position();
             ops.send(self.task.reply, Ok((address, self.header.clone(), entry)));
 
-            // TODO: Clean up handler after completion
-            return Ok(());
+            return Ok(Next::Stop);
         }
 
         bail!("failed to find component");
