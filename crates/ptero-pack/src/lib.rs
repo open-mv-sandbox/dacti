@@ -10,7 +10,7 @@ use dacti_pack::{
     IndexComponentHeader, IndexEntry, IndexGroupEncoding, IndexGroupHeader, INDEX_COMPONENT_UUID,
 };
 use daicon::RegionData;
-use stewart::{handler::Handler, Address, Context};
+use stewart::{handler::Handler, runtime::RuntimeHandle, Address};
 use tracing::{event, Level};
 use uuid::Uuid;
 
@@ -20,7 +20,7 @@ use crate::{
 };
 
 pub fn package_add_data(
-    ctx: &Context,
+    ctx: &RuntimeHandle,
     package_addr: Address<RwMessage>,
     data: Vec<u8>,
     uuid: Uuid,
@@ -46,22 +46,25 @@ pub fn package_add_data(
     ctx.send(package_addr, msg);
 }
 
-fn add_index_entry(ctx: &Context, package_addr: Address<RwMessage>, value: IndexEntry) {
+fn add_index_entry(ctx: &RuntimeHandle, package_addr: Address<RwMessage>, value: IndexEntry) {
     FindComponentStep::start(ctx, package_addr, value);
 }
 
 struct FindComponentStep {
+    ctx: RuntimeHandle,
     package_addr: Address<RwMessage>,
     value: IndexEntry,
 }
 
 impl FindComponentStep {
-    fn start(ctx: &Context, package_addr: Address<RwMessage>, value: IndexEntry) {
+    fn start(ctx: &RuntimeHandle, package_addr: Address<RwMessage>, value: IndexEntry) {
+        let ctx_c = ctx.clone();
         find_component(
             ctx,
             INDEX_COMPONENT_UUID,
             package_addr,
             ctx.add_handler(Self {
+                ctx: ctx_c,
                 package_addr,
                 value,
             }),
@@ -72,7 +75,7 @@ impl FindComponentStep {
 impl Handler for FindComponentStep {
     type Message = FindComponentResult;
 
-    fn handle(&self, ctx: &Context, message: FindComponentResult) -> Result<(), Error> {
+    fn handle(&self, message: FindComponentResult) -> Result<(), Error> {
         let (_component_location, table_header, component_entry) = message?;
 
         let region = RegionData::from_bytes(component_entry.data());
@@ -87,7 +90,7 @@ impl Handler for FindComponentStep {
             start: component_offset,
             data,
         };
-        ctx.send(self.package_addr, msg);
+        self.ctx.send(self.package_addr, msg);
 
         // TODO: Clean up handler after completion
         Ok(())

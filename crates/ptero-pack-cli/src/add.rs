@@ -7,7 +7,7 @@ use std::{
 use anyhow::{anyhow, Context as ContextExt, Error};
 use clap::Args;
 use ptero_pack::{io::RwMessage, package_add_data};
-use stewart::{handler::Handler, Context};
+use stewart::{handler::Handler, runtime::RuntimeHandle};
 use stewart_native::Runtime;
 use tracing::{event, Level};
 use uuid::Uuid;
@@ -40,10 +40,11 @@ pub fn run(command: AddCommand) -> Result<(), Error> {
 
     // Set up the runtime
     let runtime = Runtime::new();
-    let ctx = runtime.context().clone();
+    let ctx = runtime.handle().clone();
 
     // Add the package IO handler
     let package_actor = FileRwHandler {
+        ctx: ctx.clone(),
         file: Mutex::new(package),
     };
     let package_addr = ctx.add_handler(package_actor);
@@ -61,13 +62,14 @@ pub fn run(command: AddCommand) -> Result<(), Error> {
 }
 
 struct FileRwHandler {
+    ctx: RuntimeHandle,
     file: Mutex<File>,
 }
 
 impl Handler for FileRwHandler {
     type Message = RwMessage;
 
-    fn handle(&self, ctx: &Context, message: RwMessage) -> Result<(), Error> {
+    fn handle(&self, message: RwMessage) -> Result<(), Error> {
         let mut file = self.file.lock().map_err(|_| anyhow!("lock poisoned"))?;
 
         match message {
@@ -81,7 +83,7 @@ impl Handler for FileRwHandler {
                 let mut buffer = vec![0u8; length as usize];
                 file.seek(SeekFrom::Start(start))?;
                 file.read_exact(&mut buffer)?;
-                ctx.send(reply, Ok(buffer));
+                self.ctx.send(reply, Ok(buffer));
             }
             RwMessage::Write { start, data } => {
                 file.seek(SeekFrom::Start(start))?;

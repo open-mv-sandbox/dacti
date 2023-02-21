@@ -4,42 +4,45 @@ use std::{any::Any, sync::Arc};
 
 use crossbeam::queue::SegQueue;
 use sharded_slab::Slab;
-use stewart::{handler::AnyHandler, runtime::RuntimeContext, Context};
+use stewart::{
+    handler::AnyHandler,
+    runtime::{RuntimeHandle, RuntimeHandleInner},
+};
 use tracing::{event, Level};
 
 // TODO: Run threaded on a thread pool runtime like tokio.
 
 /// Local blocking handler execution runtime.
 pub struct Runtime {
-    context_impl: Arc<RuntimeContextImpl>,
-    context: Context,
+    handle_inner: Arc<NativeRuntimeHandleInner>,
+    handle: RuntimeHandle,
 }
 
 impl Runtime {
     pub fn new() -> Self {
-        let context_impl = Arc::new(RuntimeContextImpl::default());
-        let context = Context::from_runtime(context_impl.clone());
+        let handle_inner = Arc::new(NativeRuntimeHandleInner::default());
+        let handle = RuntimeHandle::from_inner(handle_inner.clone());
 
         Self {
-            context_impl,
-            context,
+            handle_inner,
+            handle,
         }
     }
 
-    pub fn context(&self) -> &Context {
-        &self.context
+    pub fn handle(&self) -> &RuntimeHandle {
+        &self.handle
     }
 
     /// Execute handlers until no messages remain.
     pub fn block_execute(&self) {
-        while let Some(message) = self.context_impl.queue.pop() {
+        while let Some(message) = self.handle_inner.queue.pop() {
             self.handle_message(message);
         }
     }
 
     fn handle_message(&self, message: Message) {
         // TODO: Send addressing error back to handler
-        let result = self.context_impl.handlers.get(message.address);
+        let result = self.handle_inner.handlers.get(message.address);
         let actor = match result {
             Some(handler) => handler,
             None => {
@@ -49,7 +52,7 @@ impl Runtime {
         };
 
         // Run the handler
-        let result = actor.handle(&self.context, message.message);
+        let result = actor.handle(message.message);
 
         // TODO: If a handler fails, maybe it should stop/restart the handler?
         if let Err(error) = result {
@@ -59,20 +62,20 @@ impl Runtime {
 }
 
 #[derive(Default)]
-struct RuntimeContextImpl {
+struct NativeRuntimeHandleInner {
     queue: SegQueue<Message>,
     handlers: Slab<Box<dyn AnyHandler>>,
 }
 
-impl RuntimeContext for RuntimeContextImpl {
-    fn send(&self, address: usize, message: Box<dyn Any + Send>) {
-        self.queue.push(Message { address, message });
-    }
-
+impl RuntimeHandleInner for NativeRuntimeHandleInner {
     fn add_handler(&self, handler: Box<dyn AnyHandler>) -> usize {
         self.handlers
             .insert(handler)
             .expect("unable to insert handler")
+    }
+
+    fn send(&self, address: usize, message: Box<dyn Any + Send>) {
+        self.queue.push(Message { address, message });
     }
 }
 

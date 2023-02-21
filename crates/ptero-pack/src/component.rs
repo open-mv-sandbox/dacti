@@ -6,13 +6,13 @@ use std::{
 
 use anyhow::{bail, Error};
 use daicon::{ComponentEntry, ComponentTableHeader, SIGNATURE};
-use stewart::{handler::Handler, Address, Context};
+use stewart::{handler::Handler, runtime::RuntimeHandle, Address};
 use uuid::Uuid;
 
 use crate::io::{ReadResult, RwMessage};
 
 pub fn find_component(
-    ctx: &Context,
+    ctx: &RuntimeHandle,
     target: Uuid,
     package_addr: Address<RwMessage>,
     reply: Address<FindComponentResult>,
@@ -35,16 +35,20 @@ struct FindComponentData {
 }
 
 struct ReadHeaderStep {
+    ctx: RuntimeHandle,
     task: Arc<FindComponentData>,
 }
 
 impl ReadHeaderStep {
-    fn start(ctx: &Context, task: Arc<FindComponentData>) {
+    fn start(ctx: &RuntimeHandle, task: Arc<FindComponentData>) {
         let package_addr = task.package_addr;
         let msg = RwMessage::ReadExact {
             start: 0,
             length: (SIGNATURE.len() + size_of::<ComponentTableHeader>()) as u64,
-            reply: ctx.add_handler(Self { task }),
+            reply: ctx.add_handler(Self {
+                ctx: ctx.clone(),
+                task,
+            }),
         };
         ctx.send(package_addr, msg);
     }
@@ -53,7 +57,7 @@ impl ReadHeaderStep {
 impl Handler for ReadHeaderStep {
     type Message = ReadResult;
 
-    fn handle(&self, ctx: &Context, message: ReadResult) -> Result<(), Error> {
+    fn handle(&self, message: ReadResult) -> Result<(), Error> {
         let data = message?;
 
         // Validate signature
@@ -68,7 +72,7 @@ impl Handler for ReadHeaderStep {
         // TODO: Follow extensions
 
         // Read the data under the table
-        ReadEntriesStep::start(ctx, self.task.clone(), header_location, header);
+        ReadEntriesStep::start(&self.ctx, self.task.clone(), header_location, header);
 
         // TODO: Clean up handler after completion
         Ok(())
@@ -76,19 +80,24 @@ impl Handler for ReadHeaderStep {
 }
 
 struct ReadEntriesStep {
+    ctx: RuntimeHandle,
     task: Arc<FindComponentData>,
     header: ComponentTableHeader,
 }
 
 impl ReadEntriesStep {
     fn start(
-        ctx: &Context,
+        ctx: &RuntimeHandle,
         task: Arc<FindComponentData>,
         header_location: u64,
         header: ComponentTableHeader,
     ) {
         let package_addr = task.package_addr;
-        let this = Self { task, header };
+        let this = Self {
+            ctx: ctx.clone(),
+            task,
+            header,
+        };
 
         let msg = RwMessage::ReadExact {
             start: header_location + size_of::<ComponentTableHeader>() as u64,
@@ -102,7 +111,7 @@ impl ReadEntriesStep {
 impl Handler for ReadEntriesStep {
     type Message = ReadResult;
 
-    fn handle(&self, ctx: &Context, message: ReadResult) -> Result<(), Error> {
+    fn handle(&self, message: ReadResult) -> Result<(), Error> {
         let data = message?;
 
         let mut entry = ComponentEntry::zeroed();
@@ -118,7 +127,8 @@ impl Handler for ReadEntriesStep {
 
             // We're done!
             let address = 8 + size_of::<ComponentTableHeader>() as u64 + data.position();
-            ctx.send(self.task.reply, Ok((address, self.header.clone(), entry)));
+            self.ctx
+                .send(self.task.reply, Ok((address, self.header.clone(), entry)));
 
             // TODO: Clean up handler after completion
             return Ok(());
