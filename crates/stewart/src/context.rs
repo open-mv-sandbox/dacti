@@ -1,9 +1,6 @@
 use std::{any::Any, marker::PhantomData, sync::Arc};
 
-use crate::{
-    runtime::{DowncastActorHandlerImpl, RuntimeContext},
-    Actor, Address,
-};
+use crate::{handler::Handler, runtime::RuntimeContext, Address};
 
 /// Runtime context handle.
 #[derive(Clone)]
@@ -16,9 +13,10 @@ impl Context {
         Self { context }
     }
 
-    pub fn add_actor<A: Actor>(&self, actor: A) -> Address<A::Message> {
-        let actor = DowncastActorHandlerImpl::new(actor);
-        let address = self.context.add_actor(actor);
+    // TODO: Associate handlers with actors, for tracking and cleanup
+    pub fn add_handler<H: Handler>(&self, handler: H) -> Address<H::Message> {
+        let handler = Box::new(handler);
+        let address = self.context.add_handler(handler);
         Address {
             address,
             _p: PhantomData,

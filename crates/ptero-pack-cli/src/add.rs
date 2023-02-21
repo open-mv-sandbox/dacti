@@ -7,7 +7,7 @@ use std::{
 use anyhow::{anyhow, Context as ContextExt, Error};
 use clap::Args;
 use ptero_pack::{io::RwMessage, package_add_data};
-use stewart::{Actor, Context};
+use stewart::{handler::Handler, Context};
 use stewart_native::Runtime;
 use tracing::{event, Level};
 use uuid::Uuid;
@@ -46,7 +46,7 @@ pub fn run(command: AddCommand) -> Result<(), Error> {
     let package_actor = FileRwHandler {
         file: Mutex::new(package),
     };
-    let package_addr = ctx.add_actor(package_actor);
+    let package_addr = ctx.add_handler(package_actor);
 
     // Start the add task
     package_add_data(&ctx, package_addr, input, command.uuid);
@@ -64,7 +64,7 @@ struct FileRwHandler {
     file: Mutex<File>,
 }
 
-impl Actor for FileRwHandler {
+impl Handler for FileRwHandler {
     type Message = RwMessage;
 
     fn handle(&self, ctx: &Context, message: RwMessage) -> Result<(), Error> {

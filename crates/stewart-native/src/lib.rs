@@ -4,10 +4,7 @@ use std::{any::Any, sync::Arc};
 
 use crossbeam::queue::SegQueue;
 use sharded_slab::Slab;
-use stewart::{
-    runtime::{DowncastActorHandler, RuntimeContext},
-    Context,
-};
+use stewart::{handler::AnyHandler, runtime::RuntimeContext, Context};
 use tracing::{event, Level};
 
 // TODO: Run threaded on a thread pool runtime like tokio.
@@ -42,7 +39,7 @@ impl Runtime {
 
     fn handle_message(&self, message: Message) {
         // TODO: Send addressing error back to handler
-        let result = self.context_impl.actors.get(message.address);
+        let result = self.context_impl.handlers.get(message.address);
         let actor = match result {
             Some(handler) => handler,
             None => {
@@ -64,7 +61,7 @@ impl Runtime {
 #[derive(Default)]
 struct RuntimeContextImpl {
     queue: SegQueue<Message>,
-    actors: Slab<Box<dyn DowncastActorHandler>>,
+    handlers: Slab<Box<dyn AnyHandler>>,
 }
 
 impl RuntimeContext for RuntimeContextImpl {
@@ -72,10 +69,10 @@ impl RuntimeContext for RuntimeContextImpl {
         self.queue.push(Message { address, message });
     }
 
-    fn add_actor(&self, handler: Box<dyn DowncastActorHandler>) -> usize {
-        self.actors
+    fn add_handler(&self, handler: Box<dyn AnyHandler>) -> usize {
+        self.handlers
             .insert(handler)
-            .expect("unable to insert new actor")
+            .expect("unable to insert handler")
     }
 }
 

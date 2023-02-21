@@ -10,7 +10,7 @@ use dacti_pack::{
     IndexComponentHeader, IndexEntry, IndexGroupEncoding, IndexGroupHeader, INDEX_COMPONENT_UUID,
 };
 use daicon::RegionData;
-use stewart::{Actor, Address, Context};
+use stewart::{handler::Handler, Address, Context};
 use tracing::{event, Level};
 use uuid::Uuid;
 
@@ -61,7 +61,7 @@ impl FindComponentStep {
             ctx,
             INDEX_COMPONENT_UUID,
             package_addr,
-            ctx.add_actor(Self {
+            ctx.add_handler(Self {
                 package_addr,
                 value,
             }),
@@ -69,7 +69,7 @@ impl FindComponentStep {
     }
 }
 
-impl Actor for FindComponentStep {
+impl Handler for FindComponentStep {
     type Message = FindComponentResult;
 
     fn handle(&self, ctx: &Context, message: FindComponentResult) -> Result<(), Error> {

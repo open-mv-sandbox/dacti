@@ -6,7 +6,7 @@ use std::{
 
 use anyhow::{bail, Error};
 use daicon::{ComponentEntry, ComponentTableHeader, SIGNATURE};
-use stewart::{Actor, Address, Context};
+use stewart::{handler::Handler, Address, Context};
 use uuid::Uuid;
 
 use crate::io::{ReadResult, RwMessage};
@@ -44,13 +44,13 @@ impl ReadHeaderStep {
         let msg = RwMessage::ReadExact {
             start: 0,
             length: (SIGNATURE.len() + size_of::<ComponentTableHeader>()) as u64,
-            reply: ctx.add_actor(Self { task }),
+            reply: ctx.add_handler(Self { task }),
         };
         ctx.send(package_addr, msg);
     }
 }
 
-impl Actor for ReadHeaderStep {
+impl Handler for ReadHeaderStep {
     type Message = ReadResult;
 
     fn handle(&self, ctx: &Context, message: ReadResult) -> Result<(), Error> {
@@ -93,13 +93,13 @@ impl ReadEntriesStep {
         let msg = RwMessage::ReadExact {
             start: header_location + size_of::<ComponentTableHeader>() as u64,
             length: (this.header.length() as usize * size_of::<ComponentEntry>()) as u64,
-            reply: ctx.add_actor(this),
+            reply: ctx.add_handler(this),
         };
         ctx.send(package_addr, msg);
     }
 }
 
-impl Actor for ReadEntriesStep {
+impl Handler for ReadEntriesStep {
     type Message = ReadResult;
 
     fn handle(&self, ctx: &Context, message: ReadResult) -> Result<(), Error> {
