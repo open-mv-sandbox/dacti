@@ -13,6 +13,7 @@ pub trait ActorOps {
 }
 
 impl dyn '_ + ActorOps {
+    /// Add a new handler to an actor.
     /// TODO: Associate handlers with actors, for tracking and cleanup
     pub fn add_handler<H: Handler>(&self, handler: H) -> Address<H::Message> {
         let handler = Box::new(handler);

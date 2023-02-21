@@ -1,4 +1,4 @@
-//! Common standard messages for use by libraries using stewart.
+//! Stewart runtime APIs.
 //!
 //! These messages are not required to be used or supported, but for interoperability you should
 //! prefer these over custom messages.

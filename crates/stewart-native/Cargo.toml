@@ -9,4 +9,4 @@ crossbeam.workspace = true
 sharded-slab.workspace = true
 tracing.workspace = true
 stewart.workspace = true
-stewart-messages.workspace = true
+stewart-runtime.workspace = true

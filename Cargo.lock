@@ -860,8 +860,8 @@ dependencies = [
  "daicon",
  "ptero-pack",
  "stewart",
- "stewart-messages",
  "stewart-native",
+ "stewart-runtime",
  "tracing",
  "tracing-subscriber",
  "uuid",
@@ -987,14 +987,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "stewart-messages"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "stewart",
-]
-
-[[package]]
 name = "stewart-native"
 version = "0.1.0"
 dependencies = [
@@ -1002,8 +994,16 @@ dependencies = [
  "crossbeam",
  "sharded-slab",
  "stewart",
- "stewart-messages",
+ "stewart-runtime",
  "tracing",
+]
+
+[[package]]
+name = "stewart-runtime"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "stewart",
 ]
 
 [[package]]

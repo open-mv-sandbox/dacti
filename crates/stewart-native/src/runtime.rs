@@ -3,7 +3,7 @@ use std::any::Any;
 use crossbeam::queue::SegQueue;
 use sharded_slab::Slab;
 use stewart::{handler::AnyHandler, ActorOps, Address};
-use stewart_messages::StartActor;
+use stewart_runtime::StartActor;
 use tracing::{event, Level};
 
 use crate::manager::StartActorHandler;

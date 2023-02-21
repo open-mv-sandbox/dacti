@@ -1,8 +1,9 @@
-mod add;
-mod create;
+mod commands;
+mod io;
 
 use clap::{Parser, Subcommand};
-use tracing::{event, Level};
+use stewart_native::Runtime;
+use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
 
 fn main() {
@@ -11,17 +12,29 @@ fn main() {
         .finish();
     tracing::subscriber::set_global_default(subscriber).unwrap();
 
+    // Parse command line args
     let args = CliArgs::parse();
 
-    let result = match args.command {
-        Command::Create(c) => create::run(c),
-        Command::Add(c) => add::run(c),
-    };
+    // Set up the runtime
+    let runtime = Runtime::new();
+    let start_addr = runtime.start_actor_manager();
 
-    if let Err(error) = result {
+    // Start the command actor
+    let actor = match args.command {
+        Command::Create(c) => commands::create::actor(c),
+        Command::Add(c) => commands::add::actor(c, start_addr),
+    };
+    runtime.send(start_addr, actor);
+
+    // Run until we're done
+    runtime.block_execute();
+
+    // TODO: Stewart doesn't currently bubble up errors for us to catch, and we need those for the
+    // correct error code.
+    /*if let Err(error) = result {
         event!(Level::ERROR, "failed:\n{:?}", error);
         std::process::exit(1);
-    }
+    }*/
 }
 
 /// Pterodactil CLI toolkit for working with dacti packages.
@@ -34,6 +47,6 @@ struct CliArgs {
 
 #[derive(Subcommand, Debug)]
 enum Command {
-    Create(create::CreateCommand),
-    Add(add::AddCommand),
+    Create(commands::create::CreateCommand),
+    Add(commands::add::AddCommand),
 }
