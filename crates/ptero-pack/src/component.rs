@@ -6,13 +6,13 @@ use std::{
 
 use anyhow::{bail, Error};
 use daicon::{ComponentEntry, ComponentTableHeader, SIGNATURE};
-use stewart::{handler::Handler, runtime::RuntimeHandle, Address};
+use stewart::{handler::Handler, ActorOps, Address};
 use uuid::Uuid;
 
 use crate::io::{ReadResult, RwMessage};
 
 pub fn find_component(
-    ctx: &RuntimeHandle,
+    ops: &dyn ActorOps,
     target: Uuid,
     package_addr: Address<RwMessage>,
     reply: Address<FindComponentResult>,
@@ -22,7 +22,7 @@ pub fn find_component(
         package_addr,
         reply,
     };
-    ReadHeaderStep::start(ctx, Arc::new(data));
+    ReadHeaderStep::start(ops, Arc::new(data));
 }
 
 /// address of entry, header, entry
@@ -35,29 +35,25 @@ struct FindComponentData {
 }
 
 struct ReadHeaderStep {
-    ctx: RuntimeHandle,
     task: Arc<FindComponentData>,
 }
 
 impl ReadHeaderStep {
-    fn start(ctx: &RuntimeHandle, task: Arc<FindComponentData>) {
+    fn start(ops: &dyn ActorOps, task: Arc<FindComponentData>) {
         let package_addr = task.package_addr;
         let msg = RwMessage::ReadExact {
             start: 0,
             length: (SIGNATURE.len() + size_of::<ComponentTableHeader>()) as u64,
-            reply: ctx.add_handler(Self {
-                ctx: ctx.clone(),
-                task,
-            }),
+            reply: ops.add_handler(Self { task }),
         };
-        ctx.send(package_addr, msg);
+        ops.send(package_addr, msg);
     }
 }
 
 impl Handler for ReadHeaderStep {
     type Message = ReadResult;
 
-    fn handle(&self, message: ReadResult) -> Result<(), Error> {
+    fn handle(&self, ops: &dyn ActorOps, message: ReadResult) -> Result<(), Error> {
         let data = message?;
 
         // Validate signature
@@ -72,7 +68,7 @@ impl Handler for ReadHeaderStep {
         // TODO: Follow extensions
 
         // Read the data under the table
-        ReadEntriesStep::start(&self.ctx, self.task.clone(), header_location, header);
+        ReadEntriesStep::start(ops, self.task.clone(), header_location, header);
 
         // TODO: Clean up handler after completion
         Ok(())
@@ -80,38 +76,33 @@ impl Handler for ReadHeaderStep {
 }
 
 struct ReadEntriesStep {
-    ctx: RuntimeHandle,
     task: Arc<FindComponentData>,
     header: ComponentTableHeader,
 }
 
 impl ReadEntriesStep {
     fn start(
-        ctx: &RuntimeHandle,
+        ops: &dyn ActorOps,
         task: Arc<FindComponentData>,
         header_location: u64,
         header: ComponentTableHeader,
     ) {
         let package_addr = task.package_addr;
-        let this = Self {
-            ctx: ctx.clone(),
-            task,
-            header,
-        };
+        let this = Self { task, header };
 
         let msg = RwMessage::ReadExact {
             start: header_location + size_of::<ComponentTableHeader>() as u64,
             length: (this.header.length() as usize * size_of::<ComponentEntry>()) as u64,
-            reply: ctx.add_handler(this),
+            reply: ops.add_handler(this),
         };
-        ctx.send(package_addr, msg);
+        ops.send(package_addr, msg);
     }
 }
 
 impl Handler for ReadEntriesStep {
     type Message = ReadResult;
 
-    fn handle(&self, message: ReadResult) -> Result<(), Error> {
+    fn handle(&self, ops: &dyn ActorOps, message: ReadResult) -> Result<(), Error> {
         let data = message?;
 
         let mut entry = ComponentEntry::zeroed();
@@ -127,8 +118,7 @@ impl Handler for ReadEntriesStep {
 
             // We're done!
             let address = 8 + size_of::<ComponentTableHeader>() as u64 + data.position();
-            self.ctx
-                .send(self.task.reply, Ok((address, self.header.clone(), entry)));
+            ops.send(self.task.reply, Ok((address, self.header.clone(), entry)));
 
             // TODO: Clean up handler after completion
             return Ok(());

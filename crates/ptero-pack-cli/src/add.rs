@@ -7,7 +7,7 @@ use std::{
 use anyhow::{anyhow, Context as ContextExt, Error};
 use clap::Args;
 use ptero_pack::{io::RwMessage, package_add_data};
-use stewart::{handler::Handler, runtime::RuntimeHandle};
+use stewart::{handler::Handler, ActorOps};
 use stewart_native::Runtime;
 use tracing::{event, Level};
 use uuid::Uuid;
@@ -40,17 +40,18 @@ pub fn run(command: AddCommand) -> Result<(), Error> {
 
     // Set up the runtime
     let runtime = Runtime::new();
-    let ctx = runtime.handle().clone();
 
-    // Add the package IO handler
-    let package_actor = FileRwHandler {
-        ctx: ctx.clone(),
-        file: Mutex::new(package),
-    };
-    let package_addr = ctx.add_handler(package_actor);
+    #[allow(deprecated)]
+    runtime.run_with_ops(move |ops| {
+        // Add the package IO handler
+        let package_actor = FileRwHandler {
+            file: Mutex::new(package),
+        };
+        let package_addr = ops.add_handler(package_actor);
 
-    // Start the add task
-    package_add_data(&ctx, package_addr, input, command.uuid);
+        // Start the add task
+        package_add_data(ops, package_addr, input, command.uuid);
+    });
 
     // Run until we're done
     runtime.block_execute();
@@ -62,14 +63,13 @@ pub fn run(command: AddCommand) -> Result<(), Error> {
 }
 
 struct FileRwHandler {
-    ctx: RuntimeHandle,
     file: Mutex<File>,
 }
 
 impl Handler for FileRwHandler {
     type Message = RwMessage;
 
-    fn handle(&self, message: RwMessage) -> Result<(), Error> {
+    fn handle(&self, ops: &dyn ActorOps, message: RwMessage) -> Result<(), Error> {
         let mut file = self.file.lock().map_err(|_| anyhow!("lock poisoned"))?;
 
         match message {
@@ -83,7 +83,7 @@ impl Handler for FileRwHandler {
                 let mut buffer = vec![0u8; length as usize];
                 file.seek(SeekFrom::Start(start))?;
                 file.read_exact(&mut buffer)?;
-                self.ctx.send(reply, Ok(buffer));
+                ops.send(reply, Ok(buffer));
             }
             RwMessage::Write { start, data } => {
                 file.seek(SeekFrom::Start(start))?;

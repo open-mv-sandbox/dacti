@@ -10,7 +10,7 @@ use dacti_pack::{
     IndexComponentHeader, IndexEntry, IndexGroupEncoding, IndexGroupHeader, INDEX_COMPONENT_UUID,
 };
 use daicon::RegionData;
-use stewart::{handler::Handler, runtime::RuntimeHandle, Address};
+use stewart::{handler::Handler, ActorOps, Address};
 use tracing::{event, Level};
 use uuid::Uuid;
 
@@ -20,7 +20,7 @@ use crate::{
 };
 
 pub fn package_add_data(
-    ctx: &RuntimeHandle,
+    ops: &dyn ActorOps,
     package_addr: Address<RwMessage>,
     data: Vec<u8>,
     uuid: Uuid,
@@ -36,35 +36,32 @@ pub fn package_add_data(
     index_entry.set_uuid(uuid);
     index_entry.set_offset(data_start as u32);
     index_entry.set_size(data_len);
-    add_index_entry(ctx, package_addr, index_entry);
+    add_index_entry(ops, package_addr, index_entry);
 
     // Write the file to the package
     let msg = RwMessage::Write {
         start: data_start,
         data,
     };
-    ctx.send(package_addr, msg);
+    ops.send(package_addr, msg);
 }
 
-fn add_index_entry(ctx: &RuntimeHandle, package_addr: Address<RwMessage>, value: IndexEntry) {
-    FindComponentStep::start(ctx, package_addr, value);
+fn add_index_entry(ops: &dyn ActorOps, package_addr: Address<RwMessage>, value: IndexEntry) {
+    FindComponentStep::start(ops, package_addr, value);
 }
 
 struct FindComponentStep {
-    ctx: RuntimeHandle,
     package_addr: Address<RwMessage>,
     value: IndexEntry,
 }
 
 impl FindComponentStep {
-    fn start(ctx: &RuntimeHandle, package_addr: Address<RwMessage>, value: IndexEntry) {
-        let ctx_c = ctx.clone();
+    fn start(ops: &dyn ActorOps, package_addr: Address<RwMessage>, value: IndexEntry) {
         find_component(
-            ctx,
+            ops,
             INDEX_COMPONENT_UUID,
             package_addr,
-            ctx.add_handler(Self {
-                ctx: ctx_c,
+            ops.add_handler(Self {
                 package_addr,
                 value,
             }),
@@ -75,7 +72,7 @@ impl FindComponentStep {
 impl Handler for FindComponentStep {
     type Message = FindComponentResult;
 
-    fn handle(&self, message: FindComponentResult) -> Result<(), Error> {
+    fn handle(&self, ops: &dyn ActorOps, message: FindComponentResult) -> Result<(), Error> {
         let (_component_location, table_header, component_entry) = message?;
 
         let region = RegionData::from_bytes(component_entry.data());
@@ -90,7 +87,7 @@ impl Handler for FindComponentStep {
             start: component_offset,
             data,
         };
-        self.ctx.send(self.package_addr, msg);
+        ops.send(self.package_addr, msg);
 
         // TODO: Clean up handler after completion
         Ok(())
