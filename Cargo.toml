@@ -8,6 +8,7 @@ bytemuck = "1.13.0"
 clap = "4.1.6"
 console_error_panic_hook = "0.1.6"
 crossbeam = "0.8.2"
+daicon = "0.1.0"
 js-sys = "0.3.61"
 raw-window-handle = "0.5.0"
 sharded-slab = "0.1.4"
@@ -20,10 +21,9 @@ web-sys = "0.3.61"
 wasm-bindgen = "0.2.63"
 wasm-bindgen-futures = "0.4.34"
 wgpu = "0.15.1"
+wrapmuck = "0.1.0"
 dacti-pack = { path = "./crates/dacti-pack" }
 dacti-viewer = { path = "./crates/dacti-viewer" }
-daicon = { path = "./crates/daicon" }
 ptero-pack = { path = "./crates/ptero-pack" }
 stewart = { path = "./crates/stewart" }
 stewart-native = { path = "./crates/stewart-native" }
-wrapmuck = { path = "./crates/wrapmuck" }

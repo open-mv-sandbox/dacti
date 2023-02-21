@@ -357,6 +357,8 @@ dependencies = [
 [[package]]
 name = "daicon"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "82cb17eb273ddf0fd57b28fc65e0581781ed3a1d593e5ce45044c2dceb478f43"
 dependencies = [
  "bytemuck",
  "uuid",
@@ -1451,6 +1453,8 @@ checksum = "447660ad36a13288b1db4d4248e857b510e8c3a225c822ba4fb748c0aafecffd"
 [[package]]
 name = "wrapmuck"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e1e746d4e504129d019105814547c17042eeb64fe687d2606b0b93844c9f40d3"
 dependencies = [
  "quote",
  "syn",

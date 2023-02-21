@@ -1,6 +1,8 @@
 # Dacti Docs
 
-The dacti format is built up from multiple smaller components. These components are in turn based on the [Daicon Container Format](daicon.md). If you are not familiar with Daicon, read that specification first.
+The dacti format is built up from multiple smaller components.
+These components are in turn based on the [Daicon Container Format](https://github.com/open-mv-sandbox/daicon).
+If you are not familiar with Daicon, read that specification first.
 
 ## File Formats
 
