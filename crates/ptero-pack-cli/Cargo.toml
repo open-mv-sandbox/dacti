@@ -11,6 +11,7 @@ path = "src/main.rs"
 anyhow.workspace = true
 clap = { workspace = true, features = ["derive"] }
 stewart.workspace = true
+stewart-messages.workspace = true
 stewart-native.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true

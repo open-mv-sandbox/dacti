@@ -24,7 +24,7 @@ pub fn package_add_data(
     package_addr: Address<RwMessage>,
     data: Vec<u8>,
     uuid: Uuid,
-) {
+) -> Result<(), Error> {
     event!(Level::DEBUG, "adding data to package");
 
     // The first 64kb is reserved for components and indices
@@ -44,6 +44,8 @@ pub fn package_add_data(
         data,
     };
     ops.send(package_addr, msg);
+
+    Ok(())
 }
 
 fn add_index_entry(ops: &dyn ActorOps, package_addr: Address<RwMessage>, value: IndexEntry) {

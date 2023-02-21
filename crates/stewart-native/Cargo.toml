@@ -4,7 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+anyhow.workspace = true
 crossbeam.workspace = true
 sharded-slab.workspace = true
 tracing.workspace = true
 stewart.workspace = true
+stewart-messages.workspace = true

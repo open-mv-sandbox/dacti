@@ -2,8 +2,11 @@ use std::any::Any;
 
 use crossbeam::queue::SegQueue;
 use sharded_slab::Slab;
-use stewart::{handler::AnyHandler, ActorOps};
+use stewart::{handler::AnyHandler, ActorOps, Address};
+use stewart_messages::StartActor;
 use tracing::{event, Level};
+
+use crate::manager::StartActorHandler;
 
 // TODO: Run threaded on a thread pool runtime like tokio.
 
@@ -21,11 +24,20 @@ impl Runtime {
         }
     }
 
-    /// Temporary helper while actors cannot be spawned yet.
-    #[deprecated]
-    pub fn run_with_ops(&self, callback: impl FnOnce(&dyn ActorOps)) {
+    pub fn send<M: Any + Send>(&self, address: Address<M>, message: M) {
+        let message = Message {
+            address: address.to_raw(),
+            message: Box::new(message),
+        };
+        self.queue.push(message);
+    }
+
+    pub fn start_actor_manager(&self) -> Address<StartActor> {
         let ops = NativeActorOps { runtime: self };
-        callback(&ops);
+        let ops: &dyn ActorOps = &ops;
+        let address = ops.add_handler(StartActorHandler);
+
+        address
     }
 
     /// Execute handlers until no messages remain.

@@ -860,6 +860,7 @@ dependencies = [
  "daicon",
  "ptero-pack",
  "stewart",
+ "stewart-messages",
  "stewart-native",
  "tracing",
  "tracing-subscriber",
@@ -986,12 +987,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "stewart-messages"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "stewart",
+]
+
+[[package]]
 name = "stewart-native"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "crossbeam",
  "sharded-slab",
  "stewart",
+ "stewart-messages",
  "tracing",
 ]
 

@@ -7,7 +7,8 @@ use std::{
 use anyhow::{anyhow, Context as ContextExt, Error};
 use clap::Args;
 use ptero_pack::{io::RwMessage, package_add_data};
-use stewart::{handler::Handler, ActorOps};
+use stewart::{handler::Handler, ActorOps, Address};
+use stewart_messages::StartActor;
 use stewart_native::Runtime;
 use tracing::{event, Level};
 use uuid::Uuid;
@@ -31,27 +32,19 @@ pub struct AddCommand {
 pub fn run(command: AddCommand) -> Result<(), Error> {
     event!(Level::INFO, "adding file to package...");
 
-    let package = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .open(command.package)
-        .context("failed to open target package for writing")?;
     let input = std::fs::read(&command.input)?;
 
     // Set up the runtime
     let runtime = Runtime::new();
+    let start_addr = runtime.start_actor_manager();
 
-    #[allow(deprecated)]
-    runtime.run_with_ops(move |ops| {
-        // Add the package IO handler
-        let package_actor = FileRwHandler {
-            file: Mutex::new(package),
-        };
-        let package_addr = ops.add_handler(package_actor);
+    // Add the package IO handler
+    runtime.send(
+        start_addr,
+        create_file_actor(command.package, start_addr, input, command.uuid),
+    );
 
-        // Start the add task
-        package_add_data(ops, package_addr, input, command.uuid);
-    });
+    // TODO: We should have some way to move the add task back to here
 
     // Run until we're done
     runtime.block_execute();
@@ -60,6 +53,31 @@ pub fn run(command: AddCommand) -> Result<(), Error> {
     // correct error code.
 
     Ok(())
+}
+
+fn create_file_actor(
+    path: String,
+    start_addr: Address<StartActor>,
+    input: Vec<u8>,
+    uuid: Uuid,
+) -> StartActor {
+    StartActor::new(move |ops| {
+        let package = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(path)
+            .context("failed to open target package for writing")?;
+        let package_actor = FileRwHandler {
+            file: Mutex::new(package),
+        };
+        let package_addr = ops.add_handler(package_actor);
+
+        // Start the add task
+        let msg = StartActor::new(move |ops| package_add_data(ops, package_addr, input, uuid));
+        ops.send(start_addr, msg);
+
+        Ok(())
+    })
 }
 
 struct FileRwHandler {

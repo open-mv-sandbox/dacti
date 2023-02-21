@@ -49,17 +49,22 @@
 //! Currently, stewart handler chains also have a performance penalty over async-await. This isn't
 //! inherent in the pattern, and should be resolved in the future.
 
-mod actor;
 pub mod handler;
-pub mod runtime;
+mod ops;
 
-pub use self::actor::ActorOps;
+pub use self::ops::ActorOps;
 
 use std::{marker::PhantomData, sync::atomic::AtomicPtr};
 
 pub struct Address<M> {
     address: usize,
     _p: PhantomData<AtomicPtr<M>>,
+}
+
+impl<M> Address<M> {
+    pub fn to_raw(&self) -> usize {
+        self.address
+    }
 }
 
 impl<M> Clone for Address<M> {
