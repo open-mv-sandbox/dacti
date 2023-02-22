@@ -111,10 +111,10 @@ impl Handler for ReadEntriesStep {
         let mut data = Cursor::new(data);
 
         for _ in 0..self.header.length() {
-            data.read_exact(entry.as_bytes_mut())?;
+            data.read_exact(&mut entry)?;
 
             // Continue until we find the correct component
-            if entry.type_uuid() != self.task.target {
+            if entry.type_id() != self.task.target {
                 continue;
             }
 

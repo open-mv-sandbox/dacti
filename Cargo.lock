@@ -356,11 +356,12 @@ dependencies = [
 
 [[package]]
 name = "daicon"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "82cb17eb273ddf0fd57b28fc65e0581781ed3a1d593e5ce45044c2dceb478f43"
+checksum = "3624f64c6c732c2511fced6207d47f6ba8329a3c749999b06bd72b278b9fa2f2"
 dependencies = [
  "bytemuck",
+ "thiserror",
  "uuid",
  "wrapmuck",
 ]
@@ -429,9 +430,9 @@ checksum = "ad0a93d233ebf96623465aad4046a8d3aa4da22d4f4beba5388838c8a434bbb4"
 
 [[package]]
 name = "glow"
-version = "0.12.0"
+version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8edf6019dff2d92ad27c1e3ff82ad50a0aea5b01370353cc928bfdc33e95925c"
+checksum = "4e007a07a24de5ecae94160f141029e9a347282cfe25d1d58d85d845cf3130f1"
 dependencies = [
  "js-sys",
  "slotmap",
@@ -1463,9 +1464,9 @@ checksum = "447660ad36a13288b1db4d4248e857b510e8c3a225c822ba4fb748c0aafecffd"
 
 [[package]]
 name = "wrapmuck"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e1e746d4e504129d019105814547c17042eeb64fe687d2606b0b93844c9f40d3"
+checksum = "39252e9c38b98e0fbc9c51bcfb81ac36a857b944f27884253a7d5e65334ae764"
 dependencies = [
  "quote",
  "syn",

@@ -9,7 +9,7 @@ use anyhow::Error;
 use dacti_pack::{
     IndexComponentHeader, IndexEntry, IndexGroupEncoding, IndexGroupHeader, INDEX_COMPONENT_UUID,
 };
-use daicon::RegionData;
+use daicon::data::RegionData;
 use stewart::{
     handler::{Handler, Next},
     ActorOps, Address,
@@ -81,7 +81,7 @@ impl Handler for FindComponentStep {
         let (_component_location, table_header, component_entry) = message?;
 
         let region = RegionData::from_bytes(component_entry.data());
-        let component_offset = table_header.entries_offset() + region.offset() as u64;
+        let component_offset = region.offset(table_header.entries_offset());
 
         // TODO: Find a free slot rather than just assuming there's no groups and files yet
         // TODO: Update the component's size
@@ -104,14 +104,14 @@ fn create_table_data(entry: &IndexEntry) -> Result<Vec<u8>, Error> {
     // Find the current location of the index component
     let mut header = IndexComponentHeader::zeroed();
     header.set_groups(1);
-    data.write_all(header.as_bytes())?;
+    data.write_all(&header)?;
 
     let mut group = IndexGroupHeader::zeroed();
     group.set_encoding(IndexGroupEncoding::None);
     group.set_length(1);
-    data.write_all(group.as_bytes())?;
+    data.write_all(&group)?;
 
-    data.write_all(entry.as_bytes())?;
+    data.write_all(&entry)?;
 
     Ok(data)
 }

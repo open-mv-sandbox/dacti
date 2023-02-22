@@ -7,7 +7,7 @@ use std::{
 use anyhow::Context;
 use clap::Args;
 use dacti_pack::{IndexComponentHeader, INDEX_COMPONENT_UUID};
-use daicon::{ComponentEntry, ComponentTableHeader, RegionData};
+use daicon::{data::RegionData, ComponentEntry, ComponentTableHeader};
 use stewart_runtime::StartActor;
 use tracing::{event, Level};
 
@@ -40,21 +40,21 @@ pub fn actor(command: CreateCommand) -> StartActor {
         // Write the component table
         let mut header = ComponentTableHeader::zeroed();
         header.set_length(1);
-        package.write_all(header.as_bytes())?;
+        package.write_all(&header)?;
 
         let mut entry = ComponentEntry::zeroed();
-        entry.set_type_uuid(INDEX_COMPONENT_UUID);
+        entry.set_type_id(INDEX_COMPONENT_UUID);
 
         let region = RegionData::from_bytes_mut(entry.data_mut());
-        region.set_offset(indices_offset);
+        region.set_relative_offset(indices_offset);
         region.set_size(size_of::<IndexComponentHeader>() as u32);
 
-        package.write_all(entry.as_bytes())?;
+        package.write_all(&entry)?;
 
         // Write an empty indices table
         package.seek(SeekFrom::Start(indices_offset as u64))?;
         let header = IndexComponentHeader::zeroed();
-        package.write_all(header.as_bytes())?;
+        package.write_all(&header)?;
 
         Ok(())
     })
