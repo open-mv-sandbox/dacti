@@ -2,7 +2,7 @@ mod commands;
 mod io;
 
 use clap::{Parser, Subcommand};
-use stewart_native::Runtime;
+use stewart_runtime_native::NativeRuntime;
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
 
@@ -16,7 +16,7 @@ fn main() {
     let args = CliArgs::parse();
 
     // Set up the runtime
-    let runtime = Runtime::new();
+    let runtime = NativeRuntime::new();
     let start_addr = runtime.start_actor_manager();
 
     // Start the command actor

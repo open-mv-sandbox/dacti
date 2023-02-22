@@ -2,7 +2,7 @@ use anyhow::Error;
 use clap::Args;
 use ptero_pack::{add_data_actor, io::RwMessage};
 use stewart::{ActorOps, Address, Handler, Next};
-use stewart_runtime::StartActor;
+use stewart_api_runtime::StartActor;
 use tracing::{event, Level};
 use uuid::Uuid;
 

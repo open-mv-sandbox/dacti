@@ -1,5 +1,5 @@
 [package]
-name = "stewart-native"
+name = "stewart-runtime-native"
 version = "0.1.0"
 edition = "2021"
 
@@ -9,4 +9,4 @@ crossbeam.workspace = true
 sharded-slab.workspace = true
 tracing.workspace = true
 stewart.workspace = true
-stewart-runtime.workspace = true
+stewart-api-runtime.workspace = true

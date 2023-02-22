@@ -847,7 +847,7 @@ dependencies = [
  "dacti-pack",
  "daicon",
  "stewart",
- "stewart-runtime",
+ "stewart-api-runtime",
  "tracing",
  "uuid",
 ]
@@ -862,8 +862,8 @@ dependencies = [
  "daicon",
  "ptero-pack",
  "stewart",
- "stewart-native",
- "stewart-runtime",
+ "stewart-api-runtime",
+ "stewart-runtime-native",
  "tracing",
  "tracing-subscriber",
  "uuid",
@@ -989,23 +989,23 @@ dependencies = [
 ]
 
 [[package]]
-name = "stewart-native"
+name = "stewart-api-runtime"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "stewart",
+]
+
+[[package]]
+name = "stewart-runtime-native"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "crossbeam",
  "sharded-slab",
  "stewart",
- "stewart-runtime",
+ "stewart-api-runtime",
  "tracing",
-]
-
-[[package]]
-name = "stewart-runtime"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "stewart",
 ]
 
 [[package]]

@@ -7,7 +7,7 @@ use std::{
 use anyhow::{bail, Error};
 use daicon::{ComponentEntry, ComponentTableHeader, SIGNATURE};
 use stewart::{ActorOps, Address, Handler, Next};
-use stewart_runtime::StartActor;
+use stewart_api_runtime::StartActor;
 use uuid::Uuid;
 
 use crate::io::{ReadResult, RwMessage};

@@ -26,5 +26,5 @@ dacti-pack = { path = "./crates/dacti-pack" }
 dacti-viewer = { path = "./crates/dacti-viewer" }
 ptero-pack = { path = "./crates/ptero-pack" }
 stewart = { path = "./crates/stewart" }
-stewart-native = { path = "./crates/stewart-native" }
-stewart-runtime = { path = "./crates/stewart-runtime" }
+stewart-api-runtime = { path = "./crates/stewart-api-runtime" }
+stewart-runtime-native = { path = "./crates/stewart-runtime-native" }

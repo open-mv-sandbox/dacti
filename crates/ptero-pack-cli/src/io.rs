@@ -7,7 +7,7 @@ use std::{
 use anyhow::{anyhow, Context, Error};
 use ptero_pack::io::RwMessage;
 use stewart::{ActorOps, Address, Handler, Next};
-use stewart_runtime::StartActor;
+use stewart_api_runtime::StartActor;
 
 pub fn file_actor(path: String, reply: Address<Address<RwMessage>>) -> StartActor {
     StartActor::new(move |ops| {

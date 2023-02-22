@@ -3,7 +3,7 @@ use std::any::Any;
 use crossbeam::queue::SegQueue;
 use sharded_slab::Slab;
 use stewart::{ActorOps, Address, AnyHandler, Next};
-use stewart_runtime::StartActor;
+use stewart_api_runtime::StartActor;
 use tracing::{event, Level};
 
 use crate::manager::StartActorHandler;
@@ -11,12 +11,12 @@ use crate::manager::StartActorHandler;
 // TODO: Run threaded on a thread pool runtime like tokio.
 
 /// Local blocking handler execution runtime.
-pub struct Runtime {
+pub struct NativeRuntime {
     queue: SegQueue<Message>,
     handlers: Slab<Box<dyn AnyHandler>>,
 }
 
-impl Runtime {
+impl NativeRuntime {
     pub fn new() -> Self {
         Self {
             queue: Default::default(),
@@ -81,7 +81,7 @@ impl Runtime {
 
 /// Actor operations wrapper.
 struct NativeActorOps<'a> {
-    runtime: &'a Runtime,
+    runtime: &'a NativeRuntime,
 }
 
 impl<'a> ActorOps for NativeActorOps<'a> {

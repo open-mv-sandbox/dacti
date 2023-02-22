@@ -1,6 +1,6 @@
 use anyhow::Error;
 use stewart::{ActorOps, Handler, Next};
-use stewart_runtime::StartActor;
+use stewart_api_runtime::StartActor;
 
 pub struct StartActorHandler;
 
