@@ -21,7 +21,7 @@ pub struct CreateCommand {
 
 pub fn actor(command: CreateCommand) -> StartActor {
     StartActor::new(move |_opt| {
-        event!(Level::INFO, "creating package...");
+        event!(Level::INFO, "creating package");
 
         // Reserve 1kb for header and component table
         let indices_offset: u32 = 1024;

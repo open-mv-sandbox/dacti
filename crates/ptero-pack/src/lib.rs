@@ -10,71 +10,69 @@ use dacti_pack::{
     IndexComponentHeader, IndexEntry, IndexGroupEncoding, IndexGroupHeader, INDEX_COMPONENT_UUID,
 };
 use daicon::data::RegionData;
-use stewart::{
-    handler::{Handler, Next},
-    ActorOps, Address,
-};
+use stewart::{ActorOps, Address, Handler, Next};
+use stewart_runtime::StartActor;
 use tracing::{event, Level};
 use uuid::Uuid;
 
 use crate::{
-    component::{find_component, FindComponentResult},
+    component::{find_component_actor, FindComponentResult},
     io::RwMessage,
 };
 
-pub fn package_add_data(
-    ops: &dyn ActorOps,
+pub fn add_data_actor(
+    start_addr: Address<StartActor>,
     package_addr: Address<RwMessage>,
     data: Vec<u8>,
     uuid: Uuid,
-) -> Result<(), Error> {
-    event!(Level::DEBUG, "adding data to package");
+) -> StartActor {
+    StartActor::new(move |ops| {
+        event!(Level::DEBUG, "adding data to package");
 
-    // The first 64kb is reserved for components and indices
-    let data_start = 1024 * 64;
-    let data_len = data.len() as u32;
+        // The first 64kb is reserved for components and indices
+        // TODO: Actually find a free spot
+        let data_start = 1024 * 64;
+        let data_len = data.len() as u32;
 
-    // Add the index for the file to the package
-    let mut index_entry = IndexEntry::zeroed();
-    index_entry.set_uuid(uuid);
-    index_entry.set_offset(data_start as u32);
-    index_entry.set_size(data_len);
-    add_index_entry(ops, package_addr, index_entry);
+        // Add the index for the file to the package
+        let mut index_entry = IndexEntry::zeroed();
+        index_entry.set_uuid(uuid);
+        index_entry.set_offset(data_start as u32);
+        index_entry.set_size(data_len);
+        start_add_index_entry(ops, start_addr, package_addr, index_entry);
 
-    // Write the file to the package
-    let msg = RwMessage::Write {
-        start: data_start,
-        data,
-    };
-    ops.send(package_addr, msg);
+        // Write the file to the package
+        let msg = RwMessage::Write {
+            start: data_start,
+            data,
+        };
+        ops.send(package_addr, msg);
 
-    Ok(())
+        Ok(())
+    })
 }
 
-fn add_index_entry(ops: &dyn ActorOps, package_addr: Address<RwMessage>, value: IndexEntry) {
-    FindComponentStep::start(ops, package_addr, value);
+fn start_add_index_entry(
+    ops: &dyn ActorOps,
+    start_addr: Address<StartActor>,
+    package_addr: Address<RwMessage>,
+    value: IndexEntry,
+) {
+    let addr = ops.add_handler(FindComponentResultHandler {
+        package_addr,
+        value,
+    });
+
+    let msg = find_component_actor(INDEX_COMPONENT_UUID, package_addr, addr);
+    ops.send(start_addr, msg);
 }
 
-struct FindComponentStep {
+struct FindComponentResultHandler {
     package_addr: Address<RwMessage>,
     value: IndexEntry,
 }
 
-impl FindComponentStep {
-    fn start(ops: &dyn ActorOps, package_addr: Address<RwMessage>, value: IndexEntry) {
-        find_component(
-            ops,
-            INDEX_COMPONENT_UUID,
-            package_addr,
-            ops.add_handler(Self {
-                package_addr,
-                value,
-            }),
-        );
-    }
-}
-
-impl Handler for FindComponentStep {
+impl Handler for FindComponentResultHandler {
     type Message = FindComponentResult;
 
     fn handle(&self, ops: &dyn ActorOps, message: FindComponentResult) -> Result<Next, Error> {
@@ -84,7 +82,7 @@ impl Handler for FindComponentStep {
         let component_offset = region.offset(table_header.entries_offset());
 
         // TODO: Find a free slot rather than just assuming there's no groups and files yet
-        // TODO: Update the component's size
+        // TODO: Update the component's size after adding the new index
 
         // Write the new table
         let data = create_table_data(&self.value)?;

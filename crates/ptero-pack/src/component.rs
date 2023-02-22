@@ -6,26 +6,27 @@ use std::{
 
 use anyhow::{bail, Error};
 use daicon::{ComponentEntry, ComponentTableHeader, SIGNATURE};
-use stewart::{
-    handler::{Handler, Next},
-    ActorOps, Address,
-};
+use stewart::{ActorOps, Address, Handler, Next};
+use stewart_runtime::StartActor;
 use uuid::Uuid;
 
 use crate::io::{ReadResult, RwMessage};
 
-pub fn find_component(
-    ops: &dyn ActorOps,
+pub fn find_component_actor(
     target: Uuid,
     package_addr: Address<RwMessage>,
     reply: Address<FindComponentResult>,
-) {
-    let data = FindComponentData {
-        target,
-        package_addr,
-        reply,
-    };
-    ReadHeaderStep::start(ops, Arc::new(data));
+) -> StartActor {
+    StartActor::new(move |ops| {
+        let data = FindComponentData {
+            target,
+            package_addr,
+            reply,
+        };
+        ReadHeaderStep::start(ops, Arc::new(data));
+
+        Ok(())
+    })
 }
 
 /// address of entry, header, entry

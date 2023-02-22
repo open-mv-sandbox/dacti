@@ -2,10 +2,7 @@ use std::any::Any;
 
 use crossbeam::queue::SegQueue;
 use sharded_slab::Slab;
-use stewart::{
-    handler::{AnyHandler, Next},
-    ActorOps, Address,
-};
+use stewart::{ActorOps, Address, AnyHandler, Next};
 use stewart_runtime::StartActor;
 use tracing::{event, Level};
 
@@ -29,7 +26,7 @@ impl Runtime {
 
     pub fn send<M: Any + Send>(&self, address: Address<M>, message: M) {
         let message = Message {
-            address: address.to_raw(),
+            address: address.to_usize(),
             message: Box::new(message),
         };
         self.queue.push(message);

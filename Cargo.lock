@@ -847,6 +847,7 @@ dependencies = [
  "dacti-pack",
  "daicon",
  "stewart",
+ "stewart-runtime",
  "tracing",
  "uuid",
 ]

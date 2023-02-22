@@ -1,10 +1,7 @@
 use anyhow::Error;
 use clap::Args;
-use ptero_pack::{io::RwMessage, package_add_data};
-use stewart::{
-    handler::{Handler, Next},
-    ActorOps, Address,
-};
+use ptero_pack::{add_data_actor, io::RwMessage};
+use stewart::{ActorOps, Address, Handler, Next};
 use stewart_runtime::StartActor;
 use tracing::{event, Level};
 use uuid::Uuid;
@@ -29,7 +26,7 @@ pub struct AddCommand {
 
 pub fn actor(command: AddCommand, start_addr: Address<StartActor>) -> StartActor {
     StartActor::new(move |opt| {
-        event!(Level::INFO, "adding file to package...");
+        event!(Level::INFO, "adding file to package");
 
         let input = std::fs::read(&command.input)?;
 
@@ -39,7 +36,8 @@ pub fn actor(command: AddCommand, start_addr: Address<StartActor>) -> StartActor
             uuid: command.uuid,
         });
 
-        opt.send(start_addr, file_actor(command.package, ready_addr));
+        let msg = file_actor(command.package, ready_addr);
+        opt.send(start_addr, msg);
 
         Ok(())
     })
@@ -59,7 +57,7 @@ impl Handler for ReadyHandler {
 
         // TODO: Could we do a once-handler that takes by value?
         let (input, uuid) = (self.input.clone(), self.uuid);
-        let msg = StartActor::new(move |ops| package_add_data(ops, package_addr, input, uuid));
+        let msg = add_data_actor(self.start_addr, package_addr, input, uuid);
         ops.send(self.start_addr, msg);
 
         Ok(Next::Stop)

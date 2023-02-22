@@ -7,6 +7,7 @@ use anyhow::Error;
 use stewart::ActorOps;
 
 /// Start an actor on a runtime, using a factory function.
+#[must_use = "actor will not be started until message is sent"]
 pub struct StartActor {
     factory: Box<dyn FnOnce(&dyn ActorOps) -> Result<(), Error> + Send>,
 }

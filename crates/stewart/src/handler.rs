@@ -25,6 +25,8 @@ pub trait AnyHandler: Send + Sync {
 
 impl<H: Handler> AnyHandler for H {
     fn handle(&self, ops: &dyn ActorOps, message: Box<dyn Any>) -> Result<Next, Error> {
+        // TODO: Can we bypass AnyHandler's dynamic casting by redesigning the runtime to have type
+        // specific channels? This might also eliminate the need for boxes.
         let result = message.downcast::<H::Message>();
 
         match result {

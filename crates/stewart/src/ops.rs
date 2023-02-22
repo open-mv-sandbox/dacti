@@ -1,4 +1,4 @@
-use std::{any::Any, marker::PhantomData};
+use std::any::Any;
 
 use crate::{
     handler::{AnyHandler, Handler},
@@ -9,7 +9,7 @@ use crate::{
 pub trait ActorOps {
     fn add_handler_any(&self, handler: Box<dyn AnyHandler>) -> usize;
 
-    fn send_any(&self, mailbox: usize, message: Box<dyn Any + Send>);
+    fn send_any(&self, address: usize, message: Box<dyn Any + Send>);
 }
 
 impl dyn '_ + ActorOps {
@@ -18,15 +18,12 @@ impl dyn '_ + ActorOps {
     pub fn add_handler<H: Handler>(&self, handler: H) -> Address<H::Message> {
         let handler = Box::new(handler);
         let address = self.add_handler_any(handler);
-        Address {
-            address,
-            _p: PhantomData,
-        }
+        Address::from_usize(address)
     }
 
     /// Send a message to the handler at the address.
     /// TODO: Sender as its own type maybe?
     pub fn send<M: Any + Send>(&self, address: Address<M>, message: M) {
-        self.send_any(address.address, Box::new(message));
+        self.send_any(address.to_usize(), Box::new(message));
     }
 }

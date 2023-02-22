@@ -6,10 +6,7 @@ use std::{
 
 use anyhow::{anyhow, Context, Error};
 use ptero_pack::io::RwMessage;
-use stewart::{
-    handler::{Handler, Next},
-    ActorOps, Address,
-};
+use stewart::{ActorOps, Address, Handler, Next};
 use stewart_runtime::StartActor;
 
 pub fn file_actor(path: String, reply: Address<Address<RwMessage>>) -> StartActor {
@@ -23,6 +20,8 @@ pub fn file_actor(path: String, reply: Address<Address<RwMessage>>) -> StartActo
             file: Mutex::new(package),
         };
         let rw_addr = ops.add_handler(package_actor);
+
+        // Notify that we're ready
         ops.send(reply, rw_addr);
 
         Ok(())
