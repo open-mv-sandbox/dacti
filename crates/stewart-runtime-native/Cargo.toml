@@ -5,8 +5,7 @@ edition = "2021"
 
 [dependencies]
 anyhow.workspace = true
-crossbeam.workspace = true
 sharded-slab.workspace = true
 tracing.workspace = true
 stewart.workspace = true
-stewart-api-runtime.workspace = true
+stewart-local.workspace = true

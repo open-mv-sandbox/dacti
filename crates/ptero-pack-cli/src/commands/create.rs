@@ -8,7 +8,8 @@ use anyhow::Context;
 use clap::Args;
 use dacti_pack::{IndexComponentHeader, INDEX_COMPONENT_UUID};
 use daicon::{data::RegionData, ComponentEntry, ComponentTableHeader};
-use stewart_api_runtime::StartActor;
+use stewart::Actor;
+use stewart_local::StartActor;
 use tracing::{event, Level};
 
 /// Create a new dacti package.
@@ -19,43 +20,56 @@ pub struct CreateCommand {
     package: String,
 }
 
-pub fn actor(command: CreateCommand) -> StartActor {
-    StartActor::new(move |_opt| {
-        event!(Level::INFO, "creating package");
+pub struct CreateCommandActor;
 
-        // Reserve 1kb for header and component table
-        let indices_offset: u32 = 1024;
+impl CreateCommandActor {
+    pub fn msg(command: CreateCommand) -> StartActor {
+        StartActor::new(move |_addr| {
+            event!(Level::INFO, "creating package");
 
-        // Open the target file, overwriting anything already there
-        let mut package = OpenOptions::new()
-            .write(true)
-            .truncate(true)
-            .create(true)
-            .open(command.package)
-            .context("failed to open target package for writing")?;
+            // Reserve 1kb for header and component table
+            let indices_offset: u32 = 1024;
 
-        // Write the signature
-        package.write_all(daicon::SIGNATURE)?;
+            // Open the target file, overwriting anything already there
+            let mut package = OpenOptions::new()
+                .write(true)
+                .truncate(true)
+                .create(true)
+                .open(command.package)
+                .context("failed to open target package for writing")?;
 
-        // Write the component table
-        let mut header = ComponentTableHeader::zeroed();
-        header.set_length(1);
-        package.write_all(&header)?;
+            // Write the signature
+            package.write_all(daicon::SIGNATURE)?;
 
-        let mut entry = ComponentEntry::zeroed();
-        entry.set_type_id(INDEX_COMPONENT_UUID);
+            // Write the component table
+            let mut header = ComponentTableHeader::zeroed();
+            header.set_length(1);
+            package.write_all(&header)?;
 
-        let region = RegionData::from_bytes_mut(entry.data_mut());
-        region.set_relative_offset(indices_offset);
-        region.set_size(size_of::<IndexComponentHeader>() as u32);
+            let mut entry = ComponentEntry::zeroed();
+            entry.set_type_id(INDEX_COMPONENT_UUID);
 
-        package.write_all(&entry)?;
+            let region = RegionData::from_bytes_mut(entry.data_mut());
+            region.set_relative_offset(indices_offset);
+            region.set_size(size_of::<IndexComponentHeader>() as u32);
 
-        // Write an empty indices table
-        package.seek(SeekFrom::Start(indices_offset as u64))?;
-        let header = IndexComponentHeader::zeroed();
-        package.write_all(&header)?;
+            package.write_all(&entry)?;
 
-        Ok(())
-    })
+            // Write an empty indices table
+            package.seek(SeekFrom::Start(indices_offset as u64))?;
+            let header = IndexComponentHeader::zeroed();
+            package.write_all(&header)?;
+
+            Ok(CreateCommandActor)
+        })
+    }
+}
+
+impl Actor for CreateCommandActor {
+    type Message = ();
+
+    fn handle(&mut self, _message: Self::Message) -> Result<stewart::Next, anyhow::Error> {
+        // TODO: Currently makes no sense for this to be an actor, but it will use other actors
+        unimplemented!()
+    }
 }

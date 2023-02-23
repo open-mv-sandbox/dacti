@@ -1,63 +1,124 @@
 use std::{
     io::{Cursor, Read},
     mem::size_of,
-    sync::Arc,
 };
 
 use anyhow::{bail, Error};
 use daicon::{ComponentEntry, ComponentTableHeader, SIGNATURE};
-use stewart::{ActorOps, Address, Handler, Next};
-use stewart_api_runtime::StartActor;
+use stewart::{Actor, Next};
+use stewart_local::{Address, DispatcherArc, StartActor};
 use uuid::Uuid;
 
-use crate::io::{ReadResult, RwMessage};
+use crate::io::{PackageIo, ReadResult};
 
-pub fn find_component_actor(
+pub struct FindComponentActor {
+    addr: Address<FindComponentMessage>,
+    dispatcher: DispatcherArc,
+    start_addr: Address<StartActor>,
+    package_addr: Address<PackageIo>,
     target: Uuid,
-    package_addr: Address<RwMessage>,
-    reply: Address<FindComponentResult>,
-) -> StartActor {
-    StartActor::new(move |ops| {
-        let data = FindComponentData {
-            target,
-            package_addr,
-            reply,
-        };
-        ReadHeaderStep::start(ops, Arc::new(data));
-
-        Ok(())
-    })
-}
-
-/// address of entry, header, entry
-pub type FindComponentResult = Result<(u64, ComponentTableHeader, ComponentEntry), Error>;
-
-struct FindComponentData {
-    target: Uuid,
-    package_addr: Address<RwMessage>,
     reply: Address<FindComponentResult>,
 }
 
-struct ReadHeaderStep {
-    task: Arc<FindComponentData>,
-}
+impl FindComponentActor {
+    pub fn msg(
+        dispatcher: DispatcherArc,
+        start_addr: Address<StartActor>,
+        target: Uuid,
+        package_addr: Address<PackageIo>,
+        reply: Address<FindComponentResult>,
+    ) -> StartActor {
+        StartActor::new(move |addr| {
+            // Start reading the header
+            let msg = ReadHeaderActor::msg(dispatcher.clone(), package_addr, addr);
+            dispatcher.send(start_addr, msg);
 
-impl ReadHeaderStep {
-    fn start(ops: &dyn ActorOps, task: Arc<FindComponentData>) {
-        let package_addr = task.package_addr;
-        let msg = RwMessage::ReadExact {
-            start: 0,
-            length: (SIGNATURE.len() + size_of::<ComponentTableHeader>()) as u64,
-            reply: ops.add_handler(Self { task }),
-        };
-        ops.send(package_addr, msg);
+            Ok(Self {
+                addr,
+                dispatcher,
+                start_addr,
+                package_addr,
+                target,
+                reply,
+            })
+        })
     }
 }
 
-impl Handler for ReadHeaderStep {
+impl Actor for FindComponentActor {
+    type Message = FindComponentMessage;
+
+    fn handle(&mut self, message: FindComponentMessage) -> Result<Next, Error> {
+        let next = match message {
+            FindComponentMessage::Header(location, header) => {
+                let msg = ReadEntriesActor::msg(
+                    self.dispatcher.clone(),
+                    self.package_addr,
+                    location,
+                    header,
+                    self.addr,
+                );
+                self.dispatcher.send(self.start_addr, msg);
+
+                // TODO: Follow extensions
+
+                Next::Continue
+            }
+            FindComponentMessage::Entries(header, entries) => {
+                if let Some(entry) = entries.into_iter().find(|e| e.type_id() == self.target) {
+                    let result = FindComponentResult { header, entry };
+                    self.dispatcher.send(self.reply, result);
+                } else {
+                    // TODO: Better error reporting
+                    bail!("unable to find component");
+                }
+
+                Next::Stop
+            }
+        };
+
+        Ok(next)
+    }
+}
+
+pub struct FindComponentResult {
+    pub header: ComponentTableHeader,
+    pub entry: ComponentEntry,
+}
+
+pub enum FindComponentMessage {
+    Header(u64, ComponentTableHeader),
+    Entries(ComponentTableHeader, Vec<ComponentEntry>),
+}
+
+struct ReadHeaderActor {
+    dispatcher: DispatcherArc,
+    reply: Address<FindComponentMessage>,
+}
+
+impl ReadHeaderActor {
+    fn msg(
+        dispatcher: DispatcherArc,
+        package_addr: Address<PackageIo>,
+        reply: Address<FindComponentMessage>,
+    ) -> StartActor {
+        StartActor::new(move |addr| {
+            let msg = PackageIo::Read {
+                start: 0,
+                length: (SIGNATURE.len() + size_of::<ComponentTableHeader>()) as u64,
+                reply: addr,
+            };
+            dispatcher.send(package_addr, msg);
+
+            Ok(Self { dispatcher, reply })
+        })
+    }
+}
+
+impl Actor for ReadHeaderActor {
     type Message = ReadResult;
 
-    fn handle(&self, ops: &dyn ActorOps, message: ReadResult) -> Result<Next, Error> {
+    fn handle(&mut self, message: ReadResult) -> Result<Next, Error> {
         let data = message?;
 
         // Validate signature
@@ -69,63 +130,64 @@ impl Handler for ReadHeaderStep {
         let header_location = 8;
         let header = ComponentTableHeader::from_bytes(&data[8..]).clone();
 
-        // TODO: Follow extensions
-
-        // Read the data under the table
-        ReadEntriesStep::start(ops, self.task.clone(), header_location, header);
+        let msg = FindComponentMessage::Header(header_location, header);
+        self.dispatcher.send(self.reply, msg);
 
         Ok(Next::Stop)
     }
 }
 
-struct ReadEntriesStep {
-    task: Arc<FindComponentData>,
+struct ReadEntriesActor {
+    dispatcher: DispatcherArc,
     header: ComponentTableHeader,
+    reply: Address<FindComponentMessage>,
 }
 
-impl ReadEntriesStep {
-    fn start(
-        ops: &dyn ActorOps,
-        task: Arc<FindComponentData>,
+impl ReadEntriesActor {
+    fn msg(
+        dispatcher: DispatcherArc,
+        package_addr: Address<PackageIo>,
         header_location: u64,
         header: ComponentTableHeader,
-    ) {
-        let package_addr = task.package_addr;
-        let this = Self { task, header };
+        reply: Address<FindComponentMessage>,
+    ) -> StartActor {
+        StartActor::new(move |addr| {
+            let msg = PackageIo::Read {
+                start: header_location + ComponentTableHeader::bytes_len() as u64,
+                length: (header.length() as usize * size_of::<ComponentEntry>()) as u64,
+                reply: addr,
+            };
+            dispatcher.send(package_addr, msg);
 
-        let msg = RwMessage::ReadExact {
-            start: header_location + size_of::<ComponentTableHeader>() as u64,
-            length: (this.header.length() as usize * size_of::<ComponentEntry>()) as u64,
-            reply: ops.add_handler(this),
-        };
-        ops.send(package_addr, msg);
+            Ok(Self {
+                dispatcher,
+                header,
+                reply,
+            })
+        })
     }
 }
 
-impl Handler for ReadEntriesStep {
+impl Actor for ReadEntriesActor {
     type Message = ReadResult;
 
-    fn handle(&self, ops: &dyn ActorOps, message: ReadResult) -> Result<Next, Error> {
+    fn handle(&mut self, message: ReadResult) -> Result<Next, Error> {
         let data = message?;
 
-        let mut entry = ComponentEntry::zeroed();
+        let mut entries = Vec::new();
         let mut data = Cursor::new(data);
 
+        // TODO: Direct cast?
         for _ in 0..self.header.length() {
+            let mut entry = ComponentEntry::zeroed();
             data.read_exact(&mut entry)?;
-
-            // Continue until we find the correct component
-            if entry.type_id() != self.task.target {
-                continue;
-            }
-
-            // We're done!
-            let address = 8 + size_of::<ComponentTableHeader>() as u64 + data.position();
-            ops.send(self.task.reply, Ok((address, self.header.clone(), entry)));
-
-            return Ok(Next::Stop);
+            entries.push(entry);
         }
 
-        bail!("failed to find component");
+        // Reply with the read data
+        let msg = FindComponentMessage::Entries(self.header.clone(), entries);
+        self.dispatcher.send(self.reply, msg);
+
+        Ok(Next::Stop)
     }
 }

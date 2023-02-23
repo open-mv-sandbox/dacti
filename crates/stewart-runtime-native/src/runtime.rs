@@ -1,104 +1,114 @@
-use std::any::Any;
+use std::{
+    any::Any,
+    sync::{
+        mpsc::{channel, Receiver, Sender},
+        Arc,
+    },
+};
 
-use crossbeam::queue::SegQueue;
-use sharded_slab::Slab;
-use stewart::{ActorOps, Address, AnyHandler, Next};
-use stewart_api_runtime::StartActor;
+use stewart::Next;
+use stewart_local::{Address, Dispatcher, StartActor};
 use tracing::{event, Level};
 
-use crate::manager::StartActorHandler;
+use crate::{actors::Actors, manager::StartActorActor};
 
-// TODO: Run threaded on a thread pool runtime like tokio.
-
-/// Local blocking handler execution runtime.
+/// Native stewart execution runtime.
 pub struct NativeRuntime {
-    queue: SegQueue<Message>,
-    handlers: Slab<Box<dyn AnyHandler>>,
+    dispatcher: Arc<NativeDispatcher>,
+    receiver: Receiver<AnyMessage>,
+    actors: Arc<Actors>,
 }
 
 impl NativeRuntime {
     pub fn new() -> Self {
+        let (sender, receiver) = channel();
+        let dispatcher = Arc::new(NativeDispatcher(sender));
+        let actors = Arc::new(Actors::new());
+
         Self {
-            queue: Default::default(),
-            handlers: Default::default(),
+            dispatcher,
+            receiver,
+            actors,
         }
     }
 
-    pub fn send<M: Any + Send>(&self, address: Address<M>, message: M) {
-        let message = Message {
-            address: address.to_usize(),
-            message: Box::new(message),
-        };
-        self.queue.push(message);
+    pub fn dispatcher(&self) -> &Arc<NativeDispatcher> {
+        &self.dispatcher
     }
 
     pub fn start_actor_manager(&self) -> Address<StartActor> {
-        let ops = NativeActorOps { runtime: self };
-        let ops: &dyn ActorOps = &ops;
-        let address = ops.add_handler(StartActorHandler);
+        let address = self
+            .actors
+            .start(|_| {
+                let actor = StartActorActor::new(self.actors.clone())?;
+                Ok(Box::new(actor))
+            })
+            .expect("failed to start start actor");
 
-        address
+        Address::from_raw(address)
     }
 
     /// Execute handlers until no messages remain.
     pub fn block_execute(&self) {
-        while let Some(message) = self.queue.pop() {
+        // TODO: Execution should happen on a thread pool.
+        // This has some implications for handler locking that should be checked at that point.
+        // For example, task scheduling should be done in a way that avoids mutex lock contention.
+        // Maybe execution workers should just be given handlers to run from the scheduler, rather
+        // than messages? Then there's no need for mutexes at all.
+
+        // TODO: Message executor as actor?
+        // Per-message-type actors won't work, as we very frequently want to distribute the same
+        // message across multiple threads.
+        while let Ok(message) = self.receiver.try_recv() {
             self.handle_message(message);
         }
     }
 
-    fn handle_message(&self, message: Message) {
-        // TODO: Send addressing error back to handler
-        let result = self.handlers.get(message.address);
-        let actor = match result {
-            Some(handler) => handler,
-            None => {
-                event!(Level::ERROR, "failed to find actor for address");
-                return;
-            }
-        };
-
-        // Run the handler
-        let ops = NativeActorOps { runtime: self };
-        let result = actor.handle(&ops, message.message);
+    fn handle_message(&self, message: AnyMessage) {
+        // Run the actor's handler
+        let result = self
+            .actors
+            .run(message.address, |actor| actor.handle_any(message.message));
 
         // TODO: What should we do with the error?
         let next = match result {
-            Ok(next) => next,
+            Ok(Ok(next)) => next,
             Err(error) => {
-                event!(Level::ERROR, "error in handler\n{:?}", error);
+                event!(Level::ERROR, "error while finding actor\n{:?}", error);
+                return;
+            }
+            Ok(Err(error)) => {
+                event!(
+                    Level::ERROR,
+                    "error while running actor.handle\n{:?}",
+                    error
+                );
                 return;
             }
         };
 
-        // If the handler wants to remove itself, remove it
+        // If the actor wants to remove itself, remove it
         if next == Next::Stop {
-            event!(Level::TRACE, "removing handler");
-            self.handlers.remove(message.address);
+            self.actors.stop(message.address);
         }
     }
 }
 
-/// Actor operations wrapper.
-struct NativeActorOps<'a> {
-    runtime: &'a NativeRuntime,
-}
-
-impl<'a> ActorOps for NativeActorOps<'a> {
-    fn add_handler_any(&self, handler: Box<dyn AnyHandler>) -> usize {
-        event!(Level::TRACE, "adding handler");
-        self.runtime
-            .handlers
-            .insert(handler)
-            .expect("unable to insert handler")
-    }
-
-    fn send_any(&self, address: usize, message: Box<dyn Any + Send>) {
-        self.runtime.queue.push(Message { address, message });
-    }
-}
-
-struct Message {
+pub struct AnyMessage {
     address: usize,
-    message: Box<dyn Any + Send>,
+    message: Box<dyn Any>,
+}
+
+pub struct NativeDispatcher(Sender<AnyMessage>);
+
+impl Dispatcher for NativeDispatcher {
+    fn send_any(&self, address: usize, message: Box<dyn Any>) {
+        let message = AnyMessage { address, message };
+        let result = self.0.send(message);
+
+        // TODO: What to do with a send failure?
+        if let Err(error) = result {
+            event!(Level::ERROR, "failed to send message\n{:?}", error);
+        }
+    }
 }

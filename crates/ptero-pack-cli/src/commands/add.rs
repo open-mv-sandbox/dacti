@@ -1,12 +1,12 @@
 use anyhow::Error;
 use clap::Args;
-use ptero_pack::{add_data_actor, io::RwMessage};
-use stewart::{ActorOps, Address, Handler, Next};
-use stewart_api_runtime::StartActor;
+use ptero_pack::{io::PackageIo, AddDataActor};
+use stewart::{Actor, Next};
+use stewart_local::{Address, DispatcherArc, StartActor};
 use tracing::{event, Level};
 use uuid::Uuid;
 
-use crate::io::file_actor;
+use crate::io::PackageIoActor;
 
 /// Add files to a dacti package.
 #[derive(Args, Debug)]
@@ -24,41 +24,52 @@ pub struct AddCommand {
     uuid: Uuid,
 }
 
-pub fn actor(command: AddCommand, start_addr: Address<StartActor>) -> StartActor {
-    StartActor::new(move |opt| {
-        event!(Level::INFO, "adding file to package");
-
-        let input = std::fs::read(&command.input)?;
-
-        let ready_addr = opt.add_handler(ReadyHandler {
-            start_addr,
-            input,
-            uuid: command.uuid,
-        });
-
-        let msg = file_actor(command.package, ready_addr);
-        opt.send(start_addr, msg);
-
-        Ok(())
-    })
-}
-
-struct ReadyHandler {
+pub struct AddCommandActor {
+    dispatcher: DispatcherArc,
     start_addr: Address<StartActor>,
     input: Vec<u8>,
     uuid: Uuid,
 }
 
-impl Handler for ReadyHandler {
-    type Message = Address<RwMessage>;
+impl AddCommandActor {
+    pub fn msg(
+        dispatcher: DispatcherArc,
+        start_addr: Address<StartActor>,
+        command: AddCommand,
+    ) -> StartActor {
+        StartActor::new(move |addr| {
+            event!(Level::INFO, "adding file to package");
 
-    fn handle(&self, ops: &dyn ActorOps, message: Self::Message) -> Result<Next, Error> {
+            let input = std::fs::read(&command.input)?;
+
+            let msg = PackageIoActor::msg(dispatcher.clone(), command.package, addr);
+            dispatcher.send(start_addr, msg);
+
+            Ok(AddCommandActor {
+                dispatcher,
+                start_addr,
+                input,
+                uuid: command.uuid,
+            })
+        })
+    }
+}
+
+impl Actor for AddCommandActor {
+    type Message = Address<PackageIo>;
+
+    fn handle(&mut self, message: Address<PackageIo>) -> Result<Next, Error> {
         let package_addr = message;
 
-        // TODO: Could we do a once-handler that takes by value?
         let (input, uuid) = (self.input.clone(), self.uuid);
-        let msg = add_data_actor(self.start_addr, package_addr, input, uuid);
-        ops.send(self.start_addr, msg);
+        let msg = AddDataActor::msg(
+            self.dispatcher.clone(),
+            self.start_addr,
+            package_addr,
+            input,
+            uuid,
+        );
+        self.dispatcher.send(self.start_addr, msg);
 
         Ok(Next::Stop)
     }

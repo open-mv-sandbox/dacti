@@ -1,20 +1,20 @@
 use std::{marker::PhantomData, sync::atomic::AtomicPtr};
 
-/// An address a sender can use to find a receiver.
+/// An address a sender can use to route messages.
 pub struct Address<M> {
     raw: usize,
     _p: PhantomData<AtomicPtr<M>>,
 }
 
 impl<M> Address<M> {
-    pub fn from_usize(raw: usize) -> Self {
+    pub fn from_raw(raw: usize) -> Self {
         Address {
             raw,
             _p: PhantomData,
         }
     }
 
-    pub fn to_usize(&self) -> usize {
+    pub(crate) fn to_raw(&self) -> usize {
         self.raw
     }
 }

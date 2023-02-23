@@ -1,8 +1,9 @@
 [package]
-name = "stewart-api-runtime"
+name = "stewart-local"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 anyhow.workspace = true
+tracing.workspace = true
 stewart.workspace = true

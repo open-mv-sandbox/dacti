@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 anyhow.workspace = true
 stewart.workspace = true
-stewart-api-runtime.workspace = true
+stewart-local.workspace = true
 tracing.workspace = true
 uuid.workspace = true
 dacti-pack.workspace = true

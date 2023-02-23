@@ -1,16 +1,27 @@
+use std::sync::Arc;
+
 use anyhow::Error;
-use stewart::{ActorOps, Handler, Next};
-use stewart_api_runtime::StartActor;
+use stewart::{Actor, Next};
+use stewart_local::StartActor;
 
-pub struct StartActorHandler;
+use crate::actors::Actors;
 
-impl Handler for StartActorHandler {
+pub struct StartActorActor {
+    actors: Arc<Actors>,
+}
+
+impl StartActorActor {
+    pub fn new(actors: Arc<Actors>) -> Result<Self, Error> {
+        Ok(Self { actors })
+    }
+}
+
+impl Actor for StartActorActor {
     type Message = StartActor;
 
-    fn handle(&self, ops: &dyn ActorOps, message: Self::Message) -> Result<Next, Error> {
-        // TODO: Actually manage actors, this just runs the handlers in-line
-        // TODO: Do something with errors
-        message.run_factory(ops)?;
+    fn handle(&mut self, message: Self::Message) -> Result<Next, Error> {
+        let factory = |address| message.run_factory(address);
+        self.actors.start(factory);
 
         Ok(Next::Continue)
     }
