@@ -24,7 +24,7 @@ pub struct CreateCommandActor;
 
 impl CreateCommandActor {
     pub fn msg(command: CreateCommand) -> StartActor {
-        StartActor::new(move |_addr| {
+        StartActor::new(move |_sender| {
             event!(Level::INFO, "creating package");
 
             // Reserve 1kb for header and component table

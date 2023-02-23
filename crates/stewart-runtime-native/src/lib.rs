@@ -1,7 +1,8 @@
 //! Native runtime for stewart.
 
 mod actors;
-mod manager;
 mod runtime;
+mod sender;
+mod starter;
 
-pub use self::runtime::{NativeDispatcher, NativeRuntime};
+pub use self::runtime::NativeRuntime;

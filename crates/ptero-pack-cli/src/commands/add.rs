@@ -1,8 +1,8 @@
 use anyhow::Error;
 use clap::Args;
 use ptero_pack::{io::PackageIo, AddDataActor};
-use stewart::{Actor, Next};
-use stewart_local::{Address, DispatcherArc, StartActor};
+use stewart::{Actor, Next, Sender};
+use stewart_local::StartActor;
 use tracing::{event, Level};
 use uuid::Uuid;
 
@@ -25,29 +25,23 @@ pub struct AddCommand {
 }
 
 pub struct AddCommandActor {
-    dispatcher: DispatcherArc,
-    start_addr: Address<StartActor>,
+    start: Sender<StartActor>,
     input: Vec<u8>,
     uuid: Uuid,
 }
 
 impl AddCommandActor {
-    pub fn msg(
-        dispatcher: DispatcherArc,
-        start_addr: Address<StartActor>,
-        command: AddCommand,
-    ) -> StartActor {
+    pub fn msg(start: Sender<StartActor>, command: AddCommand) -> StartActor {
         StartActor::new(move |addr| {
             event!(Level::INFO, "adding file to package");
 
             let input = std::fs::read(&command.input)?;
 
-            let msg = PackageIoActor::msg(dispatcher.clone(), command.package, addr);
-            dispatcher.send(start_addr, msg);
+            let msg = PackageIoActor::msg(command.package, addr);
+            start.send(msg);
 
             Ok(AddCommandActor {
-                dispatcher,
-                start_addr,
+                start,
                 input,
                 uuid: command.uuid,
             })
@@ -56,20 +50,14 @@ impl AddCommandActor {
 }
 
 impl Actor for AddCommandActor {
-    type Message = Address<PackageIo>;
+    type Message = Sender<PackageIo>;
 
-    fn handle(&mut self, message: Address<PackageIo>) -> Result<Next, Error> {
-        let package_addr = message;
+    fn handle(&mut self, message: Sender<PackageIo>) -> Result<Next, Error> {
+        let package = message;
 
         let (input, uuid) = (self.input.clone(), self.uuid);
-        let msg = AddDataActor::msg(
-            self.dispatcher.clone(),
-            self.start_addr,
-            package_addr,
-            input,
-            uuid,
-        );
-        self.dispatcher.send(self.start_addr, msg);
+        let msg = AddDataActor::msg(self.start.clone(), package, input, uuid);
+        self.start.send(msg);
 
         Ok(Next::Stop)
     }

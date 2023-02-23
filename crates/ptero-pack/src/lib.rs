@@ -11,8 +11,8 @@ use dacti_pack::{
     IndexComponentHeader, IndexEntry, IndexGroupEncoding, IndexGroupHeader, INDEX_COMPONENT_UUID,
 };
 use daicon::data::RegionData;
-use stewart::{Actor, Next};
-use stewart_local::{Address, DispatcherArc, StartActor};
+use stewart::{Actor, Next, Sender};
+use stewart_local::StartActor;
 use tracing::{event, Level};
 use uuid::Uuid;
 
@@ -22,13 +22,12 @@ pub struct AddDataActor;
 
 impl AddDataActor {
     pub fn msg(
-        dispatcher: DispatcherArc,
-        start_addr: Address<StartActor>,
-        package_addr: Address<PackageIo>,
+        start: Sender<StartActor>,
+        package: Sender<PackageIo>,
         data: Vec<u8>,
         uuid: Uuid,
     ) -> StartActor {
-        StartActor::new(move |_addr| {
+        StartActor::new(move |_sender| {
             event!(Level::DEBUG, "adding data to package");
 
             // The first 64kb is reserved for components and indices
@@ -41,15 +40,15 @@ impl AddDataActor {
             index_entry.set_uuid(uuid);
             index_entry.set_offset(data_start as u32);
             index_entry.set_size(data_len);
-            let msg = AddIndexActor::msg(dispatcher.clone(), start_addr, package_addr, index_entry);
-            dispatcher.send(start_addr, msg);
+            let msg = AddIndexActor::msg(start.clone(), package.clone(), index_entry);
+            start.send(msg);
 
             // Write the file to the package
             let msg = PackageIo::Write {
                 start: data_start,
                 data,
             };
-            dispatcher.send(package_addr, msg);
+            package.send(msg);
 
             Ok(AddDataActor)
         })
@@ -66,33 +65,22 @@ impl Actor for AddDataActor {
 }
 
 struct AddIndexActor {
-    dispatcher: DispatcherArc,
-    package_addr: Address<PackageIo>,
+    package: Sender<PackageIo>,
     value: IndexEntry,
 }
 
 impl AddIndexActor {
     pub fn msg(
-        dispatcher: DispatcherArc,
-        start_addr: Address<StartActor>,
-        package_addr: Address<PackageIo>,
+        start: Sender<StartActor>,
+        package: Sender<PackageIo>,
         value: IndexEntry,
     ) -> StartActor {
         StartActor::new(move |addr| {
-            let msg = FindComponentActor::msg(
-                dispatcher.clone(),
-                start_addr,
-                INDEX_COMPONENT_UUID,
-                package_addr,
-                addr,
-            );
-            dispatcher.send(start_addr, msg);
+            let msg =
+                FindComponentActor::msg(start.clone(), INDEX_COMPONENT_UUID, package.clone(), addr);
+            start.send(msg);
 
-            Ok(Self {
-                dispatcher,
-                package_addr,
-                value,
-            })
+            Ok(Self { package, value })
         })
     }
 }
@@ -113,7 +101,7 @@ impl Actor for AddIndexActor {
             start: component_offset,
             data,
         };
-        self.dispatcher.send(self.package_addr, msg);
+        self.package.send(msg);
 
         Ok(Next::Stop)
     }

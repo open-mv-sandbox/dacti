@@ -5,39 +5,37 @@ use std::{
 
 use anyhow::{bail, Error};
 use daicon::{ComponentEntry, ComponentTableHeader, SIGNATURE};
-use stewart::{Actor, Next};
-use stewart_local::{Address, DispatcherArc, StartActor};
+use stewart::{Actor, Next, Sender};
+use stewart_local::StartActor;
 use uuid::Uuid;
 
 use crate::io::{PackageIo, ReadResult};
 
 pub struct FindComponentActor {
-    addr: Address<FindComponentMessage>,
-    dispatcher: DispatcherArc,
-    start_addr: Address<StartActor>,
-    package_addr: Address<PackageIo>,
+    sender: Sender<FindComponentMessage>,
+    start: Sender<StartActor>,
+    package: Sender<PackageIo>,
     target: Uuid,
-    reply: Address<FindComponentResult>,
+    reply: Sender<FindComponentResult>,
 }
 
 impl FindComponentActor {
+    // TODO: Private actor type should not be exposed
     pub fn msg(
-        dispatcher: DispatcherArc,
-        start_addr: Address<StartActor>,
+        start: Sender<StartActor>,
         target: Uuid,
-        package_addr: Address<PackageIo>,
-        reply: Address<FindComponentResult>,
+        package: Sender<PackageIo>,
+        reply: Sender<FindComponentResult>,
     ) -> StartActor {
-        StartActor::new(move |addr| {
+        StartActor::new(move |sender| {
             // Start reading the header
-            let msg = ReadHeaderActor::msg(dispatcher.clone(), package_addr, addr);
-            dispatcher.send(start_addr, msg);
+            let msg = ReadHeaderActor::msg(package.clone(), sender.clone());
+            start.send(msg);
 
             Ok(Self {
-                addr,
-                dispatcher,
-                start_addr,
-                package_addr,
+                sender,
+                start,
+                package,
                 target,
                 reply,
             })
@@ -52,13 +50,12 @@ impl Actor for FindComponentActor {
         let next = match message {
             FindComponentMessage::Header(location, header) => {
                 let msg = ReadEntriesActor::msg(
-                    self.dispatcher.clone(),
-                    self.package_addr,
+                    self.package.clone(),
                     location,
                     header,
-                    self.addr,
+                    self.sender.clone(),
                 );
-                self.dispatcher.send(self.start_addr, msg);
+                self.start.send(msg);
 
                 // TODO: Follow extensions
 
@@ -67,7 +64,7 @@ impl Actor for FindComponentActor {
             FindComponentMessage::Entries(header, entries) => {
                 if let Some(entry) = entries.into_iter().find(|e| e.type_id() == self.target) {
                     let result = FindComponentResult { header, entry };
-                    self.dispatcher.send(self.reply, result);
+                    self.reply.send(result);
                 } else {
                     // TODO: Better error reporting
                     bail!("unable to find component");
@@ -92,25 +89,20 @@ pub enum FindComponentMessage {
 }
 
 struct ReadHeaderActor {
-    dispatcher: DispatcherArc,
-    reply: Address<FindComponentMessage>,
+    reply: Sender<FindComponentMessage>,
 }
 
 impl ReadHeaderActor {
-    fn msg(
-        dispatcher: DispatcherArc,
-        package_addr: Address<PackageIo>,
-        reply: Address<FindComponentMessage>,
-    ) -> StartActor {
+    fn msg(package: Sender<PackageIo>, reply: Sender<FindComponentMessage>) -> StartActor {
         StartActor::new(move |addr| {
             let msg = PackageIo::Read {
                 start: 0,
                 length: (SIGNATURE.len() + size_of::<ComponentTableHeader>()) as u64,
                 reply: addr,
             };
-            dispatcher.send(package_addr, msg);
+            package.send(msg);
 
-            Ok(Self { dispatcher, reply })
+            Ok(Self { reply })
         })
     }
 }
@@ -131,25 +123,23 @@ impl Actor for ReadHeaderActor {
         let header = ComponentTableHeader::from_bytes(&data[8..]).clone();
 
         let msg = FindComponentMessage::Header(header_location, header);
-        self.dispatcher.send(self.reply, msg);
+        self.reply.send(msg);
 
         Ok(Next::Stop)
     }
 }
 
 struct ReadEntriesActor {
-    dispatcher: DispatcherArc,
     header: ComponentTableHeader,
-    reply: Address<FindComponentMessage>,
+    reply: Sender<FindComponentMessage>,
 }
 
 impl ReadEntriesActor {
     fn msg(
-        dispatcher: DispatcherArc,
-        package_addr: Address<PackageIo>,
+        package: Sender<PackageIo>,
         header_location: u64,
         header: ComponentTableHeader,
-        reply: Address<FindComponentMessage>,
+        reply: Sender<FindComponentMessage>,
     ) -> StartActor {
         StartActor::new(move |addr| {
             let msg = PackageIo::Read {
@@ -157,13 +147,9 @@ impl ReadEntriesActor {
                 length: (header.length() as usize * size_of::<ComponentEntry>()) as u64,
                 reply: addr,
             };
-            dispatcher.send(package_addr, msg);
+            package.send(msg);
 
-            Ok(Self {
-                dispatcher,
-                header,
-                reply,
-            })
+            Ok(Self { header, reply })
         })
     }
 }
@@ -186,7 +172,7 @@ impl Actor for ReadEntriesActor {
 
         // Reply with the read data
         let msg = FindComponentMessage::Entries(self.header.clone(), entries);
-        self.dispatcher.send(self.reply, msg);
+        self.reply.send(msg);
 
         Ok(Next::Stop)
     }

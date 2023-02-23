@@ -1,14 +1,12 @@
 use std::{
     any::{type_name, Any},
     marker::PhantomData,
-    sync::atomic::AtomicPtr,
+    sync::{atomic::AtomicPtr, Arc},
 };
 
 use anyhow::Error;
-use stewart::{Actor, Next};
+use stewart::{Actor, AnySender, Next, Sender};
 use tracing::{event, Level};
-
-use crate::Address;
 
 /// Start an actor on a runtime, using a factory function.
 ///
@@ -24,7 +22,7 @@ impl StartActor {
     pub fn new<A, F>(factory: F) -> Self
     where
         A: Actor + 'static,
-        F: FnOnce(Address<A::Message>) -> Result<A, Error> + 'static,
+        F: FnOnce(Sender<A::Message>) -> Result<A, Error> + 'static,
     {
         let factory = ActorFactory {
             factory,
@@ -36,13 +34,13 @@ impl StartActor {
         }
     }
 
-    pub fn run_factory(self, address: usize) -> Result<Box<dyn AnyActor>, Error> {
-        self.factory.create(address)
+    pub fn run_factory(self, sender: Arc<dyn AnySender>) -> Result<Box<dyn AnyActor>, Error> {
+        self.factory.create(sender)
     }
 }
 
 trait AnyActorFactory {
-    fn create(self: Box<Self>, address: usize) -> Result<Box<dyn AnyActor>, Error>;
+    fn create(self: Box<Self>, sender: Arc<dyn AnySender>) -> Result<Box<dyn AnyActor>, Error>;
 }
 
 struct ActorFactory<A, F> {
@@ -53,11 +51,11 @@ struct ActorFactory<A, F> {
 impl<A, F> AnyActorFactory for ActorFactory<A, F>
 where
     A: Actor + 'static,
-    F: FnOnce(Address<A::Message>) -> Result<A, Error>,
+    F: FnOnce(Sender<A::Message>) -> Result<A, Error>,
 {
-    fn create(self: Box<Self>, address: usize) -> Result<Box<dyn AnyActor>, Error> {
-        let address = Address::from_raw(address);
-        let actor = (self.factory)(address)?;
+    fn create(self: Box<Self>, sender: Arc<dyn AnySender>) -> Result<Box<dyn AnyActor>, Error> {
+        let sender = Sender::from_any_sender(sender);
+        let actor = (self.factory)(sender)?;
         Ok(Box::new(actor))
     }
 }

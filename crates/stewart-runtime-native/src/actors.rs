@@ -17,22 +17,22 @@ impl Actors {
         }
     }
 
-    /// Start an actor and return its address.
+    /// Start an actor and return its ID.
     pub fn start<F>(&self, factory: F) -> Option<usize>
     where
         F: FnOnce(usize) -> Result<Box<dyn AnyActor>, Error>,
     {
         event!(Level::TRACE, "starting actor");
 
-        // Allocate an address
+        // Allocate an ID
         let entry = self
             .slab
             .vacant_entry()
-            .expect("unable to allocate actor address");
-        let address = entry.key();
+            .expect("unable to allocate actor id");
+        let id = entry.key();
 
         // Attempt to create the actor
-        let result = factory(address);
+        let result = factory(id);
         let actor = match result {
             Ok(actor) => actor,
             Err(error) => {
@@ -41,26 +41,26 @@ impl Actors {
             }
         };
 
-        // Finalize the actor storage, and return its address
+        // Finalize the actor storage, and return its ID
         entry.insert(Mutex::new(actor));
-        Some(address)
+        Some(id)
     }
 
-    pub fn stop(&self, address: usize) {
+    pub fn stop(&self, id: usize) {
         event!(Level::TRACE, "stopping actor");
-        self.slab.remove(address);
+        self.slab.remove(id);
     }
 
-    /// Run an operation on an actor by address.
-    pub fn run<F, O>(&self, address: usize, action: F) -> Result<O, Error>
+    /// Run an operation on an actor by ID.
+    pub fn run<F, O>(&self, id: usize, action: F) -> Result<O, Error>
     where
         F: FnOnce(&mut dyn AnyActor) -> O,
     {
         // TODO: Send addressing error back to handler
         let actor = self
             .slab
-            .get(address)
-            .context("failed to find actor for address")?;
+            .get(id)
+            .context("failed to find actor for id")?;
         let mut actor = actor.lock().map_err(|_| anyhow!("actor lock poisoned"))?;
 
         // Perform the action

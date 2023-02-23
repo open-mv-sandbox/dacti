@@ -1,11 +1,11 @@
 use anyhow::Error;
-use stewart_local::Address;
+use stewart::Sender;
 
 pub enum PackageIo {
     Read {
         start: u64,
         length: u64,
-        reply: Address<ReadResult>,
+        reply: Sender<ReadResult>,
     },
     Write {
         start: u64,

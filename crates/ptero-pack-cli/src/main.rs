@@ -3,7 +3,6 @@ mod io;
 
 use clap::{Parser, Subcommand};
 use commands::{add::AddCommandActor, create::CreateCommandActor};
-use stewart_local::Dispatcher;
 use stewart_runtime_native::NativeRuntime;
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
@@ -19,16 +18,14 @@ fn main() {
 
     // Set up the runtime
     let runtime = NativeRuntime::new();
-    let dispatcher = runtime.dispatcher();
-    let start_addr = runtime.start_actor_manager();
+    let start = runtime.start_starter();
 
     // Start the command actor
     let msg = match args.command {
         Command::Create(c) => CreateCommandActor::msg(c),
-        Command::Add(c) => AddCommandActor::msg(dispatcher.clone(), start_addr, c),
+        Command::Add(c) => AddCommandActor::msg(start.clone(), c),
     };
-    // TODO: Wonky dispatcher syntax
-    (dispatcher.as_ref() as &dyn Dispatcher).send(start_addr, msg);
+    start.send(msg);
 
     // Run until we're done
     runtime.block_execute();

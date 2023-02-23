@@ -5,21 +5,16 @@ use std::{
 
 use anyhow::{Context, Error};
 use ptero_pack::io::PackageIo;
-use stewart::{Actor, Next};
-use stewart_local::{Address, DispatcherArc, StartActor};
+use stewart::{Actor, Next, Sender};
+use stewart_local::StartActor;
 use tracing::{event, Level};
 
 pub struct PackageIoActor {
-    dispatcher: DispatcherArc,
     package_file: File,
 }
 
 impl PackageIoActor {
-    pub fn msg(
-        dispatcher: DispatcherArc,
-        path: String,
-        reply: Address<Address<PackageIo>>,
-    ) -> StartActor {
+    pub fn msg(path: String, reply: Sender<Sender<PackageIo>>) -> StartActor {
         StartActor::new(move |addr| {
             let package_file = OpenOptions::new()
                 .read(true)
@@ -27,12 +22,9 @@ impl PackageIoActor {
                 .open(path)
                 .context("failed to open target package for writing")?;
 
-            dispatcher.send(reply, addr);
+            reply.send(addr);
 
-            Ok(Self {
-                dispatcher,
-                package_file,
-            })
+            Ok(Self { package_file })
         })
     }
 }
@@ -51,7 +43,7 @@ impl Actor for PackageIoActor {
                 let mut buffer = vec![0u8; length as usize];
                 self.package_file.seek(SeekFrom::Start(start))?;
                 self.package_file.read_exact(&mut buffer)?;
-                self.dispatcher.send(reply, Ok(buffer));
+                reply.send(Ok(buffer));
             }
             PackageIo::Write { start, data } => {
                 event!(Level::TRACE, "performing write");

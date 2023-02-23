@@ -1,20 +1,20 @@
 use std::{
     any::Any,
     sync::{
-        mpsc::{channel, Receiver, Sender},
+        mpsc::{channel, Receiver, Sender as StdSender},
         Arc,
     },
 };
 
-use stewart::Next;
-use stewart_local::{Address, Dispatcher, StartActor};
+use stewart::{Next, Sender};
+use stewart_local::StartActor;
 use tracing::{event, Level};
 
-use crate::{actors::Actors, manager::StartActorActor};
+use crate::{actors::Actors, sender::NativeSender, starter::StarterActor};
 
 /// Native stewart execution runtime.
 pub struct NativeRuntime {
-    dispatcher: Arc<NativeDispatcher>,
+    sender: StdSender<AnyMessage>,
     receiver: Receiver<AnyMessage>,
     actors: Arc<Actors>,
 }
@@ -22,30 +22,27 @@ pub struct NativeRuntime {
 impl NativeRuntime {
     pub fn new() -> Self {
         let (sender, receiver) = channel();
-        let dispatcher = Arc::new(NativeDispatcher(sender));
         let actors = Arc::new(Actors::new());
 
         Self {
-            dispatcher,
+            sender,
             receiver,
             actors,
         }
     }
 
-    pub fn dispatcher(&self) -> &Arc<NativeDispatcher> {
-        &self.dispatcher
-    }
-
-    pub fn start_actor_manager(&self) -> Address<StartActor> {
-        let address = self
+    /// Bootstrap the starter actor.
+    pub fn start_starter(&self) -> Sender<StartActor> {
+        let id = self
             .actors
             .start(|_| {
-                let actor = StartActorActor::new(self.actors.clone())?;
+                let actor = StarterActor::new(self.sender.clone(), self.actors.clone())?;
                 Ok(Box::new(actor))
             })
-            .expect("failed to start start actor");
+            .expect("failed to start StarterActor");
 
-        Address::from_raw(address)
+        let sender = NativeSender::new(id, self.sender.clone());
+        Sender::from_any_sender(sender)
     }
 
     /// Execute handlers until no messages remain.
@@ -68,7 +65,7 @@ impl NativeRuntime {
         // Run the actor's handler
         let result = self
             .actors
-            .run(message.address, |actor| actor.handle_any(message.message));
+            .run(message.id, |actor| actor.handle_any(message.message));
 
         // TODO: What should we do with the error?
         let next = match result {
@@ -89,26 +86,18 @@ impl NativeRuntime {
 
         // If the actor wants to remove itself, remove it
         if next == Next::Stop {
-            self.actors.stop(message.address);
+            self.actors.stop(message.id);
         }
     }
 }
 
 pub struct AnyMessage {
-    address: usize,
+    id: usize,
     message: Box<dyn Any>,
 }
 
-pub struct NativeDispatcher(Sender<AnyMessage>);
-
-impl Dispatcher for NativeDispatcher {
-    fn send_any(&self, address: usize, message: Box<dyn Any>) {
-        let message = AnyMessage { address, message };
-        let result = self.0.send(message);
-
-        // TODO: What to do with a send failure?
-        if let Err(error) = result {
-            event!(Level::ERROR, "failed to send message\n{:?}", error);
-        }
+impl AnyMessage {
+    pub fn new(id: usize, message: Box<dyn Any>) -> Self {
+        Self { id, message }
     }
 }
