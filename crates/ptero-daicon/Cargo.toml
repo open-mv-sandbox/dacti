@@ -1,13 +1,10 @@
 [package]
-name = "ptero-pack"
+name = "ptero-daicon"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 anyhow.workspace = true
-dacti-pack.workspace = true
 daicon.workspace = true
 stewart.workspace = true
-tracing.workspace = true
 uuid.workspace = true
-ptero-daicon.workspace = true

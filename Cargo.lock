@@ -764,12 +764,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "74605f360ce573babfe43964cbe520294dcb081afbf8c108fc6e23036b4da2df"
 
 [[package]]
+name = "ptero-daicon"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "daicon",
+ "stewart",
+ "uuid",
+]
+
+[[package]]
 name = "ptero-pack"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "dacti-pack",
  "daicon",
+ "ptero-daicon",
  "stewart",
  "tracing",
  "uuid",
@@ -783,6 +794,7 @@ dependencies = [
  "clap",
  "dacti-pack",
  "daicon",
+ "ptero-daicon",
  "ptero-pack",
  "stewart",
  "stewart-native",
@@ -907,7 +919,16 @@ name = "stewart"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "stewart-derive",
  "tracing",
+]
+
+[[package]]
+name = "stewart-derive"
+version = "0.1.0"
+dependencies = [
+ "quote",
+ "syn",
 ]
 
 [[package]]

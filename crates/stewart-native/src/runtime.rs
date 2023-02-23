@@ -6,7 +6,7 @@ use std::{
     },
 };
 
-use stewart::{local::StartActor, Next, Sender};
+use stewart::{local::Factory, Next, Sender};
 use tracing::{event, Level};
 
 use crate::{actors::Actors, dispatcher::NativeDispatcher, starter::StarterActor};
@@ -32,7 +32,7 @@ impl NativeRuntime {
     }
 
     /// Bootstrap the starter actor.
-    pub fn start_starter(&self) -> Sender<StartActor> {
+    pub fn start_starter(&self) -> Sender<Box<dyn Factory>> {
         let id = self
             .actors
             .start(|_| {

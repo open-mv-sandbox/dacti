@@ -1,11 +1,12 @@
 use anyhow::Error;
 use clap::Args;
-use ptero_pack::{io::PackageIo, AddDataActor};
-use stewart::{local::StartActor, Actor, Next, Sender};
+use ptero_daicon::io::ReadWrite;
+use ptero_pack::StartAddData;
+use stewart::{local::Factory, Actor, Next, Sender};
 use tracing::{event, Level};
 use uuid::Uuid;
 
-use crate::io::PackageIoActor;
+use crate::io::StartFileReadWrite;
 
 /// Add files to a dacti package.
 #[derive(Args, Debug)]
@@ -23,40 +24,53 @@ pub struct AddCommand {
     uuid: Uuid,
 }
 
-pub struct AddCommandActor {
-    start: Sender<StartActor>,
+#[derive(Factory)]
+#[factory(AddCommandActor::start)]
+pub struct StartAddCommand {
+    pub start: Sender<Box<dyn Factory>>,
+    pub command: AddCommand,
+}
+
+struct AddCommandActor {
+    start: Sender<Box<dyn Factory>>,
     input: Vec<u8>,
     uuid: Uuid,
 }
 
 impl AddCommandActor {
-    pub fn msg(start: Sender<StartActor>, command: AddCommand) -> StartActor {
-        StartActor::new(move |addr| {
-            event!(Level::INFO, "adding file to package");
+    pub fn start(sender: Sender<Sender<ReadWrite>>, data: StartAddCommand) -> Result<Self, Error> {
+        event!(Level::INFO, "adding file to package");
 
-            let input = std::fs::read(&command.input)?;
+        let input = std::fs::read(&data.command.input)?;
 
-            let msg = PackageIoActor::msg(command.package, addr);
-            start.send(msg);
+        let start_file = StartFileReadWrite {
+            path: data.command.package,
+            reply: sender,
+        };
+        data.start.send(Box::new(start_file));
 
-            Ok(AddCommandActor {
-                start,
-                input,
-                uuid: command.uuid,
-            })
+        Ok(AddCommandActor {
+            start: data.start,
+            input,
+            uuid: data.command.uuid,
         })
     }
 }
 
 impl Actor for AddCommandActor {
-    type Message = Sender<PackageIo>;
+    type Message = Sender<ReadWrite>;
 
-    fn handle(&mut self, message: Sender<PackageIo>) -> Result<Next, Error> {
+    fn handle(&mut self, message: Sender<ReadWrite>) -> Result<Next, Error> {
         let package = message;
 
         let (input, uuid) = (self.input.clone(), self.uuid);
-        let msg = AddDataActor::msg(self.start.clone(), package, input, uuid);
-        self.start.send(msg);
+        let add_data = StartAddData {
+            start: self.start.clone(),
+            package,
+            data: input,
+            uuid,
+        };
+        self.start.send(Box::new(add_data));
 
         Ok(Next::Stop)
     }

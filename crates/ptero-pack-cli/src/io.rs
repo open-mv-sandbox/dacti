@@ -4,36 +4,41 @@ use std::{
 };
 
 use anyhow::{Context, Error};
-use ptero_pack::io::PackageIo;
-use stewart::{local::StartActor, Actor, Next, Sender};
+use ptero_daicon::io::ReadWrite;
+use stewart::{local::Factory, Actor, Next, Sender};
 use tracing::{event, Level};
 
-pub struct PackageIoActor {
+#[derive(Factory)]
+#[factory(FileReadWrite::start)]
+pub struct StartFileReadWrite {
+    pub path: String,
+    pub reply: Sender<Sender<ReadWrite>>,
+}
+
+struct FileReadWrite {
     package_file: File,
 }
 
-impl PackageIoActor {
-    pub fn msg(path: String, reply: Sender<Sender<PackageIo>>) -> StartActor {
-        StartActor::new(move |addr| {
-            let package_file = OpenOptions::new()
-                .read(true)
-                .write(true)
-                .open(path)
-                .context("failed to open target package for writing")?;
+impl FileReadWrite {
+    pub fn start(sender: Sender<ReadWrite>, data: StartFileReadWrite) -> Result<Self, Error> {
+        let package_file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(data.path)
+            .context("failed to open target package for writing")?;
 
-            reply.send(addr);
+        data.reply.send(sender);
 
-            Ok(Self { package_file })
-        })
+        Ok(Self { package_file })
     }
 }
 
-impl Actor for PackageIoActor {
-    type Message = PackageIo;
+impl Actor for FileReadWrite {
+    type Message = ReadWrite;
 
-    fn handle(&mut self, message: PackageIo) -> Result<Next, Error> {
+    fn handle(&mut self, message: ReadWrite) -> Result<Next, Error> {
         match message {
-            PackageIo::Read {
+            ReadWrite::Read {
                 start,
                 length,
                 reply,
@@ -44,7 +49,7 @@ impl Actor for PackageIoActor {
                 self.package_file.read_exact(&mut buffer)?;
                 reply.send(Ok(buffer));
             }
-            PackageIo::Write { start, data } => {
+            ReadWrite::Write { start, data } => {
                 event!(Level::TRACE, "performing write");
                 self.package_file.seek(SeekFrom::Start(start))?;
                 self.package_file.write_all(&data)?;

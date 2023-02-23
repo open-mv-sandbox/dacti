@@ -2,7 +2,8 @@ mod commands;
 mod io;
 
 use clap::{Parser, Subcommand};
-use commands::{add::AddCommandActor, create::CreateCommandActor};
+use commands::{add::StartAddCommand, create::StartCreateCommand};
+use stewart::local::Factory;
 use stewart_native::NativeRuntime;
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
@@ -21,9 +22,12 @@ fn main() {
     let start = runtime.start_starter();
 
     // Start the command actor
-    let msg = match args.command {
-        Command::Create(c) => CreateCommandActor::msg(c),
-        Command::Add(c) => AddCommandActor::msg(start.clone(), c),
+    let msg: Box<dyn Factory> = match args.command {
+        Command::Create(command) => Box::new(StartCreateCommand { command }),
+        Command::Add(command) => Box::new(StartAddCommand {
+            start: start.clone(),
+            command,
+        }),
     };
     start.send(msg);
 

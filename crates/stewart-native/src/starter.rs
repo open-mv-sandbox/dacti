@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Error;
-use stewart::{local::StartActor, Actor, Next};
+use stewart::{local::Factory, Actor, Next};
 
 use crate::{actors::Actors, dispatcher::NativeDispatcher};
 
@@ -17,10 +17,11 @@ impl StarterActor {
 }
 
 impl Actor for StarterActor {
-    type Message = StartActor;
+    type Message = Box<dyn Factory>;
 
-    fn handle(&mut self, message: StartActor) -> Result<Next, Error> {
-        let factory = |id| message.create(id, self.dispatcher.clone());
+    fn handle(&mut self, message: Box<dyn Factory>) -> Result<Next, Error> {
+        // TODO: Track hierarchy
+        let factory = |id| message.start(id, self.dispatcher.clone());
         self.actors.start(factory);
 
         Ok(Next::Continue)

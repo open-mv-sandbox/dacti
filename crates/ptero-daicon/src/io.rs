@@ -1,7 +1,7 @@
 use anyhow::Error;
 use stewart::Sender;
 
-pub enum PackageIo {
+pub enum ReadWrite {
     Read {
         start: u64,
         length: u64,

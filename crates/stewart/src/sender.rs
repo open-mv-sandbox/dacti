@@ -30,7 +30,8 @@ impl<M: Any> Sender<M> {
     }
 
     pub fn send(&self, message: M) {
-        self.dispatcher.send_any(self.address, Box::new(message));
+        self.dispatcher
+            .send_any(self.address, Box::new(message));
     }
 }
 
