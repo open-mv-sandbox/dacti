@@ -8,8 +8,7 @@ use anyhow::Context;
 use clap::Args;
 use dacti_pack::{IndexComponentHeader, INDEX_COMPONENT_UUID};
 use daicon::{data::RegionData, ComponentEntry, ComponentTableHeader};
-use stewart::Actor;
-use stewart_local::StartActor;
+use stewart::{local::StartActor, Actor};
 use tracing::{event, Level};
 
 /// Create a new dacti package.

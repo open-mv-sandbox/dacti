@@ -5,8 +5,7 @@ use std::{
 
 use anyhow::{Context, Error};
 use ptero_pack::io::PackageIo;
-use stewart::{Actor, Next, Sender};
-use stewart_local::StartActor;
+use stewart::{local::StartActor, Actor, Next, Sender};
 use tracing::{event, Level};
 
 pub struct PackageIoActor {

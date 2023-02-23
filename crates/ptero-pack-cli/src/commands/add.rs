@@ -1,8 +1,7 @@
 use anyhow::Error;
 use clap::Args;
 use ptero_pack::{io::PackageIo, AddDataActor};
-use stewart::{Actor, Next, Sender};
-use stewart_local::StartActor;
+use stewart::{local::StartActor, Actor, Next, Sender};
 use tracing::{event, Level};
 use uuid::Uuid;
 

@@ -11,8 +11,7 @@ use dacti_pack::{
     IndexComponentHeader, IndexEntry, IndexGroupEncoding, IndexGroupHeader, INDEX_COMPONENT_UUID,
 };
 use daicon::data::RegionData;
-use stewart::{Actor, Next, Sender};
-use stewart_local::StartActor;
+use stewart::{Actor, Next, Sender, local::StartActor};
 use tracing::{event, Level};
 use uuid::Uuid;
 

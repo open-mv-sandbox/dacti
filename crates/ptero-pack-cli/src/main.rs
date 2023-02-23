@@ -3,7 +3,7 @@ mod io;
 
 use clap::{Parser, Subcommand};
 use commands::{add::AddCommandActor, create::CreateCommandActor};
-use stewart_runtime_native::NativeRuntime;
+use stewart_native::NativeRuntime;
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
 

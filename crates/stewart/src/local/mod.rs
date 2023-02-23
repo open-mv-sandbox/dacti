@@ -1,3 +1,8 @@
+//! APIs for starting and communicating with actors locally.
+//!
+//! These messages are not required to be used or supported, but for interoperability you should
+//! prefer these over custom messages.
+
 use std::{
     any::{type_name, Any},
     marker::PhantomData,
@@ -5,8 +10,9 @@ use std::{
 };
 
 use anyhow::Error;
-use stewart::{Actor, AnySender, Next, Sender};
 use tracing::{event, Level};
+
+use crate::{Actor, Dispatcher, Next, Sender};
 
 /// Start an actor on a runtime, using a factory function.
 ///
@@ -34,13 +40,21 @@ impl StartActor {
         }
     }
 
-    pub fn run_factory(self, sender: Arc<dyn AnySender>) -> Result<Box<dyn AnyActor>, Error> {
-        self.factory.create(sender)
+    pub fn create(
+            self,
+            address: usize,
+            dispatcher: Arc<dyn Dispatcher>,
+            ) -> Result<Box<dyn AnyActor>, Error> {
+        self.factory.create(address, dispatcher)
     }
 }
 
 trait AnyActorFactory {
-    fn create(self: Box<Self>, sender: Arc<dyn AnySender>) -> Result<Box<dyn AnyActor>, Error>;
+    fn create(
+            self: Box<Self>,
+            address: usize,
+            sender: Arc<dyn Dispatcher>,
+            ) -> Result<Box<dyn AnyActor>, Error>;
 }
 
 struct ActorFactory<A, F> {
@@ -53,8 +67,12 @@ where
     A: Actor + 'static,
     F: FnOnce(Sender<A::Message>) -> Result<A, Error>,
 {
-    fn create(self: Box<Self>, sender: Arc<dyn AnySender>) -> Result<Box<dyn AnyActor>, Error> {
-        let sender = Sender::from_any_sender(sender);
+    fn create(
+            self: Box<Self>,
+            address: usize,
+            dispatcher: Arc<dyn Dispatcher>,
+            ) -> Result<Box<dyn AnyActor>, Error> {
+        let sender = Sender::from_raw(address, dispatcher);
         let actor = (self.factory)(sender)?;
         Ok(Box::new(actor))
     }
@@ -83,7 +101,7 @@ where
 
                 let handler_name = type_name::<H>();
                 event!(
-                    Level::ERROR,
+                        Level::ERROR,
                     handler = handler_name,
                     "failed to downcast message"
                 );

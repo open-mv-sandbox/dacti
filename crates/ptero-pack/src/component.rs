@@ -5,8 +5,7 @@ use std::{
 
 use anyhow::{bail, Error};
 use daicon::{ComponentEntry, ComponentTableHeader, SIGNATURE};
-use stewart::{Actor, Next, Sender};
-use stewart_local::StartActor;
+use stewart::{local::StartActor, Actor, Next, Sender};
 use uuid::Uuid;
 
 use crate::io::{PackageIo, ReadResult};

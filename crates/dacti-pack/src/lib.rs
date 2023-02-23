@@ -9,8 +9,7 @@
 //!
 //! Where possible, high-level wrappers are `#[repr(transparent)]` to the low-level data of those
 //! types, and can be reinterpreted. However, you should avoid doing this. Safe raw binary
-//! conversion can be done instead with `from_bytes`, `from_bytes_mut`, `as_bytes`, and
-//! `as_bytes_mut`.
+//! conversion can be done instead with `from_bytes`, `from_bytes_mut`, and `Deref`.
 
 mod entry;
 mod group;

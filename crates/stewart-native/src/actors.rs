@@ -2,7 +2,7 @@ use std::sync::Mutex;
 
 use anyhow::{anyhow, Context, Error};
 use sharded_slab::Slab;
-use stewart_local::AnyActor;
+use stewart::local::AnyActor;
 use tracing::{event, Level};
 
 /// Actors collection helper.
@@ -57,10 +57,7 @@ impl Actors {
         F: FnOnce(&mut dyn AnyActor) -> O,
     {
         // TODO: Send addressing error back to handler
-        let actor = self
-            .slab
-            .get(id)
-            .context("failed to find actor for id")?;
+        let actor = self.slab.get(id).context("failed to find actor for id")?;
         let mut actor = actor.lock().map_err(|_| anyhow!("actor lock poisoned"))?;
 
         // Perform the action

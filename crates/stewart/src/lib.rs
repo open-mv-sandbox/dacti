@@ -6,13 +6,12 @@
 //! This is a reference documentation for stewart, for more detailed explanation on stewart's
 //! design philosophy, read the stewart book.
 
-use std::{
-    any::Any,
-    marker::PhantomData,
-    sync::{atomic::AtomicPtr, Arc},
-};
+pub mod local;
+mod sender;
 
 use anyhow::Error;
+
+pub use self::sender::{Dispatcher, Sender};
 
 /// Actor message handling trait.
 pub trait Actor {
@@ -26,38 +25,4 @@ pub trait Actor {
 pub enum Next {
     Continue,
     Stop,
-}
-
-/// Type-safe generic message sender, to send messages to any actor regardless of sending
-/// implementation.
-pub struct Sender<M> {
-    // TODO: It would be nice if this could somehow be in-line and not an indirection.
-    sender: Arc<dyn AnySender>,
-    _m: PhantomData<AtomicPtr<M>>,
-}
-
-impl<M: Any> Sender<M> {
-    pub fn from_any_sender(sender: Arc<dyn AnySender>) -> Self {
-        Self {
-            sender,
-            _m: PhantomData,
-        }
-    }
-
-    pub fn send(&self, message: M) {
-        self.sender.send_any(Box::new(message));
-    }
-}
-
-impl<M> Clone for Sender<M> {
-    fn clone(&self) -> Self {
-        Self {
-            sender: self.sender.clone(),
-            _m: PhantomData,
-        }
-    }
-}
-
-pub trait AnySender {
-    fn send_any(&self, message: Box<dyn Any>);
 }

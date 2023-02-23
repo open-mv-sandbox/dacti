@@ -1,9 +1,10 @@
 [package]
-name = "stewart-local"
+name = "stewart-native"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 anyhow.workspace = true
+sharded-slab.workspace = true
 tracing.workspace = true
 stewart.workspace = true

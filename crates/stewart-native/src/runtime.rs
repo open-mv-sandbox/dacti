@@ -1,33 +1,33 @@
 use std::{
     any::Any,
     sync::{
-        mpsc::{channel, Receiver, Sender as StdSender},
+        mpsc::{channel, Receiver},
         Arc,
     },
 };
 
-use stewart::{Next, Sender};
-use stewart_local::StartActor;
+use stewart::{local::StartActor, Next, Sender};
 use tracing::{event, Level};
 
-use crate::{actors::Actors, sender::NativeSender, starter::StarterActor};
+use crate::{actors::Actors, dispatcher::NativeDispatcher, starter::StarterActor};
 
 /// Native stewart execution runtime.
 pub struct NativeRuntime {
-    sender: StdSender<AnyMessage>,
     receiver: Receiver<AnyMessage>,
     actors: Arc<Actors>,
+    dispatcher: Arc<NativeDispatcher>,
 }
 
 impl NativeRuntime {
     pub fn new() -> Self {
         let (sender, receiver) = channel();
         let actors = Arc::new(Actors::new());
+        let dispatcher = Arc::new(NativeDispatcher::new(sender));
 
         Self {
-            sender,
             receiver,
             actors,
+            dispatcher,
         }
     }
 
@@ -36,13 +36,12 @@ impl NativeRuntime {
         let id = self
             .actors
             .start(|_| {
-                let actor = StarterActor::new(self.sender.clone(), self.actors.clone())?;
+                let actor = StarterActor::new(self.actors.clone(), self.dispatcher.clone())?;
                 Ok(Box::new(actor))
             })
             .expect("failed to start StarterActor");
 
-        let sender = NativeSender::new(id, self.sender.clone());
-        Sender::from_any_sender(sender)
+        Sender::from_raw(id, self.dispatcher.clone())
     }
 
     /// Execute handlers until no messages remain.
