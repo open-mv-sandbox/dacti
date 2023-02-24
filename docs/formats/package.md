@@ -1,3 +1,0 @@
-# Dacti Package Format
-
-...

@@ -3,9 +3,9 @@ use wrapmuck::Wrapmuck;
 
 #[derive(TransparentWrapper, Wrapmuck, Debug, Clone)]
 #[repr(transparent)]
-pub struct IndexComponentHeader(IndexComponentHeaderRaw);
+pub struct IndexHeader(IndexComponentHeaderRaw);
 
-impl IndexComponentHeader {
+impl IndexHeader {
     pub fn version(&self) -> u32 {
         u32::from_le(self.0.version)
     }

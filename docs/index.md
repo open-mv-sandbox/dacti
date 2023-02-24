@@ -1,16 +1,14 @@
 # Dacti Docs
 
-The dacti format is built up from multiple smaller components.
-These components are in turn based on the [Daicon Container Format](https://github.com/open-mv-sandbox/daicon).
-If you are not familiar with Daicon, read that specification first.
+The dacti format is built up from multiple smaller components. These components are in turn based on the [daicon](https://github.com/open-mv-sandbox/daicon). If you are not familiar with daicon, read that specification first.
 
 ## File Formats
 
-- [Dacti Package Format (and associated Dacti Package Metadata)](formats/package.md)
-- [Dacti Object Format](formats/object.md)
+- [Dacti Package Format](formats/dacti-pack.md)
+- [Dacti Object Format](formats/dacti-obj.md)
 
-## Interfaces
+## Components
 
-The file formats use common daicon interfaces for interoperability.
+The file formats use common daicon components for interoperability. These components can also be used as part of other systems.
 
-- [Dacti Data Index Interface](interfaces/data-index.md)
+- [Dacti Index Component](interfaces/dacti-index.md)

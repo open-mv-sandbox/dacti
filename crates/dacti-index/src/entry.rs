@@ -4,15 +4,15 @@ use wrapmuck::Wrapmuck;
 
 #[derive(TransparentWrapper, Wrapmuck, Debug, Clone)]
 #[repr(transparent)]
-pub struct IndexEntry(IndexComponentEntryRaw);
+pub struct IndexEntry(IndexEntryRaw);
 
 impl IndexEntry {
-    pub fn uuid(&self) -> Uuid {
-        Uuid::from_bytes_le(self.0.uuid)
+    pub fn region_id(&self) -> Uuid {
+        Uuid::from_bytes_le(self.0.region_id)
     }
 
-    pub fn set_uuid(&mut self, value: Uuid) {
-        self.0.uuid = value.to_bytes_le();
+    pub fn set_region_id(&mut self, value: Uuid) {
+        self.0.region_id = value.to_bytes_le();
     }
 
     pub fn offset(&self) -> u32 {
@@ -34,8 +34,8 @@ impl IndexEntry {
 
 #[derive(Pod, Zeroable, Debug, Clone, Copy)]
 #[repr(C)]
-struct IndexComponentEntryRaw {
-    uuid: [u8; 16],
+struct IndexEntryRaw {
+    region_id: [u8; 16],
     offset: u32,
     size: u32,
 }

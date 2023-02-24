@@ -1,3 +1,0 @@
-# Dacti Data Index Interface
-
-...
