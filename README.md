@@ -8,7 +8,11 @@ The name "dacti" comes from the lojban word describing something as being a mate
 
 ## Dacti Objects
 
-The dacti object speficiation can be used for objects 'at rest'. For example, when stored on a file system, or sent to applications as a file. The object specifications can be used both to describe the entirety of an object, and to describe a subset of an object, or a replicated mirror of an object for a client to display.
+Dacti objects are a flexible self-describing metaverse object format, based on daicon components.
+
+The dacti objects can be used for objects 'at rest'. For example, when stored on a file system, or sent to applications. The object specification can be used to describe the entirety of an object, and to describe a subset of an object, or a replicated mirror of an object for a client to display.
+
+A system supporting dacti objects should support any binary blob of data as an object. Dacti object format allows these binary blobs to describe how they should be interpreted when supported.
 
 ## Dacti Packages
 
