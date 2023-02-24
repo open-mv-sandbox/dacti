@@ -1,11 +1,10 @@
 [package]
-name = "ptero-daicon"
+name = "stewart-local"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 anyhow.workspace = true
-daicon.workspace = true
+tracing.workspace = true
 stewart.workspace = true
-stewart-local.workspace = true
-uuid.workspace = true
+stewart-local-derive.workspace = true

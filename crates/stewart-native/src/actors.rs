@@ -2,7 +2,7 @@ use std::sync::Mutex;
 
 use anyhow::{anyhow, Context, Error};
 use sharded_slab::Slab;
-use stewart::local::AnyActor;
+use stewart_local::AnyActor;
 use tracing::{event, Level};
 
 /// Actors collection helper.

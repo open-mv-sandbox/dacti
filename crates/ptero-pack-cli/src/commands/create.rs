@@ -4,31 +4,27 @@ use std::{
     mem::size_of,
 };
 
-use anyhow::{Context, Error};
+use anyhow::{Context as ContextExt, Error};
 use clap::Args;
 use dacti_pack::{IndexComponentHeader, INDEX_COMPONENT_UUID};
 use daicon::{data::RegionData, ComponentEntry, ComponentTableHeader};
-use stewart::{local::Factory, Actor, Sender};
+use stewart::Actor;
+use stewart_local::{Address, Context, Factory};
 use tracing::{event, Level};
 
 /// Create a new dacti package.
-#[derive(Args, Debug)]
+#[derive(Factory, Args, Debug)]
+#[factory(CreateCommandActor::start)]
 pub struct CreateCommand {
     /// The path to create the package at.
     #[arg(short, long, value_name = "PATH")]
     package: String,
 }
 
-#[derive(Factory)]
-#[factory(CreateCommandActor::start)]
-pub struct StartCreateCommand {
-    pub command: CreateCommand,
-}
-
 struct CreateCommandActor;
 
 impl CreateCommandActor {
-    pub fn start(_sender: Sender<()>, data: StartCreateCommand) -> Result<Self, Error> {
+    pub fn start(_ctx: Context, _address: Address<()>, data: CreateCommand) -> Result<Self, Error> {
         event!(Level::INFO, "creating package");
 
         // Reserve 1kb for header and component table
@@ -39,7 +35,7 @@ impl CreateCommandActor {
             .write(true)
             .truncate(true)
             .create(true)
-            .open(data.command.package)
+            .open(data.package)
             .context("failed to open target package for writing")?;
 
         // Write the signature

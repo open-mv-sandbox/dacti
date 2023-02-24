@@ -1,51 +1,55 @@
 use std::{
     any::Any,
     sync::{
-        mpsc::{channel, Receiver},
+        mpsc::{channel, Receiver, Sender},
         Arc,
     },
 };
 
-use stewart::{local::Factory, Next, Sender};
+use stewart::Next;
+use stewart_local::Factory;
 use tracing::{event, Level};
 
-use crate::{actors::Actors, dispatcher::NativeDispatcher, starter::StarterActor};
+use crate::{actors::Actors, factory_runner::FactoryRunnerActor};
 
 /// Native stewart execution runtime.
 pub struct NativeRuntime {
+    sender: Sender<AnyMessage>,
     receiver: Receiver<AnyMessage>,
     actors: Arc<Actors>,
-    dispatcher: Arc<NativeDispatcher>,
+    factory_runner_id: usize,
 }
 
 impl NativeRuntime {
     pub fn new() -> Self {
         let (sender, receiver) = channel();
         let actors = Arc::new(Actors::new());
-        let dispatcher = Arc::new(NativeDispatcher::new(sender));
 
-        Self {
-            receiver,
-            actors,
-            dispatcher,
-        }
-    }
-
-    /// Bootstrap the starter actor.
-    pub fn start_starter(&self) -> Sender<Box<dyn Factory>> {
-        let id = self
-            .actors
-            .start(|_| {
-                let actor = StarterActor::new(self.actors.clone(), self.dispatcher.clone())?;
+        let factory_runner_id = actors
+            .start(|id| {
+                let actor = FactoryRunnerActor::new(id, actors.clone(), sender.clone())?;
                 Ok(Box::new(actor))
             })
             .expect("failed to start StarterActor");
 
-        Sender::from_raw(id, self.dispatcher.clone())
+        Self {
+            sender,
+            receiver,
+            actors,
+            factory_runner_id,
+        }
+    }
+
+    pub fn start(&self, factory: Box<dyn Factory>) {
+        let message = AnyMessage::new(self.factory_runner_id, Box::new(factory));
+        self.sender.send(message).unwrap();
     }
 
     /// Execute handlers until no messages remain.
     pub fn block_execute(&self) {
+        // TODO: This is a very naive way of running an async executor, and needs a lot of
+        // improvement to work with external systems, because it can't wait on external signals.
+
         // TODO: Execution should happen on a thread pool.
         // This has some implications for handler locking that should be checked at that point.
         // For example, task scheduling should be done in a way that avoids mutex lock contention.
@@ -55,6 +59,7 @@ impl NativeRuntime {
         // TODO: Message executor as actor?
         // Per-message-type actors won't work, as we very frequently want to distribute the same
         // message across multiple threads.
+
         while let Ok(message) = self.receiver.try_recv() {
             self.handle_message(message);
         }

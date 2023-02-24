@@ -28,5 +28,6 @@ dacti-viewer = { path = "./crates/dacti-viewer" }
 ptero-daicon = { path = "./crates/ptero-daicon" }
 ptero-pack = { path = "./crates/ptero-pack" }
 stewart = { path = "./crates/stewart" }
-stewart-derive = { path = "./crates/stewart-derive" }
+stewart-local = { path = "./crates/stewart-local" }
+stewart-local-derive = { path = "./crates/stewart-local-derive" }
 stewart-native = { path = "./crates/stewart-native" }

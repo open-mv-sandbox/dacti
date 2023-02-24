@@ -1,25 +1,8 @@
-//! APIs for starting and communicating with actors locally.
-
-use std::{
-    any::{type_name, Any},
-    sync::Arc,
-};
+use std::any::{type_name, Any};
 
 use anyhow::Error;
+use stewart::{Actor, Next};
 use tracing::{event, Level};
-
-use crate::{Actor, Dispatcher, Next};
-
-pub use stewart_derive::Factory;
-
-/// Instructions for creating an actor on a runtime locally.
-pub trait Factory {
-    fn start(
-        self: Box<Self>,
-        address: usize,
-        dispatcher: Arc<dyn Dispatcher>,
-    ) -> Result<Box<dyn AnyActor>, Error>;
-}
 
 /// Downcasting interface for sending dynamic messages to actors.
 pub trait AnyActor {

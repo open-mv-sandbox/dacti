@@ -3,37 +3,43 @@ use std::{
     io::{Read, Seek, SeekFrom, Write},
 };
 
-use anyhow::{Context, Error};
+use anyhow::{Context as ContextExt, Error};
 use ptero_daicon::io::ReadWrite;
-use stewart::{local::Factory, Actor, Next, Sender};
+use stewart::{Actor, Next};
+use stewart_local::{Address, Context, Factory};
 use tracing::{event, Level};
 
 #[derive(Factory)]
-#[factory(FileReadWrite::start)]
-pub struct StartFileReadWrite {
+#[factory(FileReadWriteActor::start)]
+pub struct FileReadWrite {
     pub path: String,
-    pub reply: Sender<Sender<ReadWrite>>,
+    pub reply: Address<Address<ReadWrite>>,
 }
 
-struct FileReadWrite {
+struct FileReadWriteActor {
+    ctx: Context,
     package_file: File,
 }
 
-impl FileReadWrite {
-    pub fn start(sender: Sender<ReadWrite>, data: StartFileReadWrite) -> Result<Self, Error> {
+impl FileReadWriteActor {
+    pub fn start(
+        ctx: Context,
+        address: Address<ReadWrite>,
+        data: FileReadWrite,
+    ) -> Result<Self, Error> {
         let package_file = OpenOptions::new()
             .read(true)
             .write(true)
             .open(data.path)
             .context("failed to open target package for writing")?;
 
-        data.reply.send(sender);
+        ctx.send(data.reply, address);
 
-        Ok(Self { package_file })
+        Ok(Self { ctx, package_file })
     }
 }
 
-impl Actor for FileReadWrite {
+impl Actor for FileReadWriteActor {
     type Message = ReadWrite;
 
     fn handle(&mut self, message: ReadWrite) -> Result<Next, Error> {
@@ -47,7 +53,7 @@ impl Actor for FileReadWrite {
                 let mut buffer = vec![0u8; length as usize];
                 self.package_file.seek(SeekFrom::Start(start))?;
                 self.package_file.read_exact(&mut buffer)?;
-                reply.send(Ok(buffer));
+                self.ctx.send(reply, Ok(buffer));
             }
             ReadWrite::Write { start, data } => {
                 event!(Level::TRACE, "performing write");

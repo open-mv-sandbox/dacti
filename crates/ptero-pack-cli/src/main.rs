@@ -2,11 +2,12 @@ mod commands;
 mod io;
 
 use clap::{Parser, Subcommand};
-use commands::{add::StartAddCommand, create::StartCreateCommand};
-use stewart::local::Factory;
+use stewart_local::Factory;
 use stewart_native::NativeRuntime;
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
+
+use crate::commands::{add::AddCommand, create::CreateCommand};
 
 fn main() {
     let subscriber = FmtSubscriber::builder()
@@ -19,19 +20,15 @@ fn main() {
 
     // Set up the runtime
     let runtime = NativeRuntime::new();
-    let start = runtime.start_starter();
 
     // Start the command actor
-    let msg: Box<dyn Factory> = match args.command {
-        Command::Create(command) => Box::new(StartCreateCommand { command }),
-        Command::Add(command) => Box::new(StartAddCommand {
-            start: start.clone(),
-            command,
-        }),
+    let command: Box<dyn Factory> = match args.command {
+        Command::Create(command) => Box::new(command),
+        Command::Add(command) => Box::new(command),
     };
-    start.send(msg);
 
-    // Run until we're done
+    // Run the command until it's done
+    runtime.start(command);
     runtime.block_execute();
 
     // TODO: Stewart doesn't currently bubble up errors for us to catch, and we need those for the
@@ -52,6 +49,6 @@ struct CliArgs {
 
 #[derive(Subcommand, Debug)]
 enum Command {
-    Create(commands::create::CreateCommand),
-    Add(commands::add::AddCommand),
+    Create(CreateCommand),
+    Add(AddCommand),
 }

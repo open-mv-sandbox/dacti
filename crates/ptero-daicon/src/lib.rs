@@ -10,18 +10,18 @@ use std::{
 use anyhow::{bail, Error};
 use daicon::{ComponentEntry, ComponentTableHeader, SIGNATURE};
 use io::ReadResult;
-use stewart::{local::Factory, Actor, Next, Sender};
+use stewart::{Actor, Next};
+use stewart_local::{Address, Context, Factory};
 use uuid::Uuid;
 
 use crate::io::ReadWrite;
 
 #[derive(Factory)]
-#[factory(FindComponent::start)]
-pub struct StartFindComponent {
-    pub start: Sender<Box<dyn Factory>>,
+#[factory(FindComponentActor::start)]
+pub struct FindComponent {
     pub target: Uuid,
-    pub package: Sender<ReadWrite>,
-    pub reply: Sender<FindComponentResult>,
+    pub package: Address<ReadWrite>,
+    pub reply: Address<FindComponentResult>,
 }
 
 pub struct FindComponentResult {
@@ -29,28 +29,30 @@ pub struct FindComponentResult {
     pub entry: ComponentEntry,
 }
 
-struct FindComponent {
-    sender: Sender<FindComponentMessage>,
-    data: StartFindComponent,
+struct FindComponentActor {
+    ctx: Context,
+    address: Address<FindComponentMessage>,
+    data: FindComponent,
 }
 
-impl FindComponent {
+impl FindComponentActor {
     fn start(
-        sender: Sender<FindComponentMessage>,
-        data: StartFindComponent,
-    ) -> Result<FindComponent, Error> {
+        ctx: Context,
+        address: Address<FindComponentMessage>,
+        data: FindComponent,
+    ) -> Result<FindComponentActor, Error> {
         // Start reading the header
-        let read_header = StartReadHeader {
+        let read_header = ReadHeader {
             package: data.package.clone(),
-            reply: sender.clone(),
+            reply: address,
         };
-        data.start.send(Box::new(read_header));
+        ctx.start(read_header);
 
-        Ok(FindComponent { sender, data })
+        Ok(FindComponentActor { ctx, address, data })
     }
 }
 
-impl Actor for FindComponent {
+impl Actor for FindComponentActor {
     type Message = FindComponentMessage;
 
     fn handle(&mut self, message: FindComponentMessage) -> Result<Next, Error> {
@@ -60,9 +62,9 @@ impl Actor for FindComponent {
                     package: self.data.package.clone(),
                     header_location: location,
                     header,
-                    reply: self.sender.clone(),
+                    reply: self.address,
                 };
-                self.data.start.send(Box::new(read_entries));
+                self.ctx.start(read_entries);
 
                 // TODO: Follow extensions
 
@@ -74,7 +76,7 @@ impl Actor for FindComponent {
                     .find(|e| e.type_id() == self.data.target)
                 {
                     let result = FindComponentResult { header, entry };
-                    self.data.reply.send(result);
+                    self.ctx.send(self.data.reply, result);
                 } else {
                     // TODO: Better error reporting
                     bail!("unable to find component");
@@ -94,30 +96,34 @@ enum FindComponentMessage {
 }
 
 #[derive(Factory)]
-#[factory(ReadHeader::start)]
-struct StartReadHeader {
-    package: Sender<ReadWrite>,
-    reply: Sender<FindComponentMessage>,
-}
-
+#[factory(ReadHeaderActor::start)]
 struct ReadHeader {
-    reply: Sender<FindComponentMessage>,
+    package: Address<ReadWrite>,
+    reply: Address<FindComponentMessage>,
 }
 
-impl ReadHeader {
-    fn start(sender: Sender<ReadResult>, data: StartReadHeader) -> Result<Self, Error> {
+struct ReadHeaderActor {
+    ctx: Context,
+    reply: Address<FindComponentMessage>,
+}
+
+impl ReadHeaderActor {
+    fn start(ctx: Context, address: Address<ReadResult>, data: ReadHeader) -> Result<Self, Error> {
         let msg = ReadWrite::Read {
             start: 0,
             length: (SIGNATURE.len() + size_of::<ComponentTableHeader>()) as u64,
-            reply: sender,
+            reply: address,
         };
-        data.package.send(msg);
+        ctx.send(data.package, msg);
 
-        Ok(ReadHeader { reply: data.reply })
+        Ok(ReadHeaderActor {
+            ctx,
+            reply: data.reply,
+        })
     }
 }
 
-impl Actor for ReadHeader {
+impl Actor for ReadHeaderActor {
     type Message = ReadResult;
 
     fn handle(&mut self, message: ReadResult) -> Result<Next, Error> {
@@ -133,43 +139,49 @@ impl Actor for ReadHeader {
         let header = ComponentTableHeader::from_bytes(&data[8..]).clone();
 
         let msg = FindComponentMessage::Header(header_location, header);
-        self.reply.send(msg);
+        self.ctx.send(self.reply, msg);
 
         Ok(Next::Stop)
     }
 }
 
 #[derive(Factory)]
-#[factory(ReadEntries::start)]
+#[factory(ReadEntriesActor::start)]
 struct StartReadEntries {
-    package: Sender<ReadWrite>,
+    package: Address<ReadWrite>,
     header_location: u64,
     header: ComponentTableHeader,
-    reply: Sender<FindComponentMessage>,
+    reply: Address<FindComponentMessage>,
 }
 
-struct ReadEntries {
+struct ReadEntriesActor {
+    ctx: Context,
     header: ComponentTableHeader,
-    reply: Sender<FindComponentMessage>,
+    reply: Address<FindComponentMessage>,
 }
 
-impl ReadEntries {
-    fn start(sender: Sender<ReadResult>, data: StartReadEntries) -> Result<Self, Error> {
+impl ReadEntriesActor {
+    fn start(
+        ctx: Context,
+        address: Address<ReadResult>,
+        data: StartReadEntries,
+    ) -> Result<Self, Error> {
         let msg = ReadWrite::Read {
             start: data.header_location + ComponentTableHeader::bytes_len() as u64,
             length: (data.header.length() as usize * size_of::<ComponentEntry>()) as u64,
-            reply: sender,
+            reply: address,
         };
-        data.package.send(msg);
+        ctx.send(data.package, msg);
 
-        Ok(ReadEntries {
+        Ok(ReadEntriesActor {
+            ctx,
             header: data.header,
             reply: data.reply,
         })
     }
 }
 
-impl Actor for ReadEntries {
+impl Actor for ReadEntriesActor {
     type Message = ReadResult;
 
     fn handle(&mut self, message: ReadResult) -> Result<Next, Error> {
@@ -187,7 +199,7 @@ impl Actor for ReadEntries {
 
         // Reply with the read data
         let msg = FindComponentMessage::Entries(self.header.clone(), entries);
-        self.reply.send(msg);
+        self.ctx.send(self.reply, msg);
 
         Ok(Next::Stop)
     }

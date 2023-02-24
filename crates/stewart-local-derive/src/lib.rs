@@ -10,14 +10,16 @@ pub fn derive_factory(input: TokenStream) -> TokenStream {
     let attr = find_attr(attrs);
 
     let output = quote! {
-        impl stewart::local::Factory for #ident {
+        impl stewart_local::Factory for #ident {
             fn start(
                 self: Box<Self>,
+                actor_id: usize,
+                dispatcher: std::sync::Arc<dyn stewart_local::Dispatcher>,
                 address: usize,
-                dispatcher: std::sync::Arc<dyn stewart::Dispatcher>,
-            ) -> Result<Box<dyn stewart::local::AnyActor>, anyhow::Error> {
-                let sender = stewart::Sender::from_raw(address, dispatcher);
-                let actor = #attr(sender, *self)?;
+            ) -> Result<Box<dyn stewart_local::AnyActor>, anyhow::Error> {
+                let ctx = stewart_local::Context::from_raw(actor_id, dispatcher);
+                let address = stewart_local::Address::from_raw(address);
+                let actor = #attr(ctx, address, *self)?;
                 Ok(Box::new(actor))
             }
         }

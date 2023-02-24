@@ -1,11 +1,11 @@
 use anyhow::Error;
-use stewart::Sender;
+use stewart_local::Address;
 
 pub enum ReadWrite {
     Read {
         start: u64,
         length: u64,
-        reply: Sender<ReadResult>,
+        reply: Address<ReadResult>,
     },
     Write {
         start: u64,

@@ -6,12 +6,7 @@
 //! This is a reference documentation for stewart, for more detailed explanation on stewart's
 //! design philosophy, read the stewart book.
 
-pub mod local;
-mod sender;
-
 use anyhow::Error;
-
-pub use self::sender::{Dispatcher, Sender};
 
 /// Actor message handling trait.
 pub trait Actor {

@@ -1,15 +1,17 @@
 use anyhow::Error;
 use clap::Args;
 use ptero_daicon::io::ReadWrite;
-use ptero_pack::StartAddData;
-use stewart::{local::Factory, Actor, Next, Sender};
+use ptero_pack::AddData;
+use stewart::{Actor, Next};
+use stewart_local::{Address, Context, Factory};
 use tracing::{event, Level};
 use uuid::Uuid;
 
-use crate::io::StartFileReadWrite;
+use crate::io::FileReadWrite;
 
 /// Add files to a dacti package.
-#[derive(Args, Debug)]
+#[derive(Factory, Args, Debug)]
+#[factory(AddCommandActor::start)]
 pub struct AddCommand {
     /// The path of the package to add files to.
     #[arg(short, long, value_name = "PATH")]
@@ -24,53 +26,49 @@ pub struct AddCommand {
     uuid: Uuid,
 }
 
-#[derive(Factory)]
-#[factory(AddCommandActor::start)]
-pub struct StartAddCommand {
-    pub start: Sender<Box<dyn Factory>>,
-    pub command: AddCommand,
-}
-
 struct AddCommandActor {
-    start: Sender<Box<dyn Factory>>,
+    ctx: Context,
     input: Vec<u8>,
     uuid: Uuid,
 }
 
 impl AddCommandActor {
-    pub fn start(sender: Sender<Sender<ReadWrite>>, data: StartAddCommand) -> Result<Self, Error> {
+    pub fn start(
+        ctx: Context,
+        address: Address<Address<ReadWrite>>,
+        data: AddCommand,
+    ) -> Result<Self, Error> {
         event!(Level::INFO, "adding file to package");
 
-        let input = std::fs::read(&data.command.input)?;
+        let input = std::fs::read(&data.input)?;
 
-        let start_file = StartFileReadWrite {
-            path: data.command.package,
-            reply: sender,
+        let start_file = FileReadWrite {
+            path: data.package,
+            reply: address,
         };
-        data.start.send(Box::new(start_file));
+        ctx.start(start_file);
 
         Ok(AddCommandActor {
-            start: data.start,
+            ctx,
             input,
-            uuid: data.command.uuid,
+            uuid: data.uuid,
         })
     }
 }
 
 impl Actor for AddCommandActor {
-    type Message = Sender<ReadWrite>;
+    type Message = Address<ReadWrite>;
 
-    fn handle(&mut self, message: Sender<ReadWrite>) -> Result<Next, Error> {
+    fn handle(&mut self, message: Address<ReadWrite>) -> Result<Next, Error> {
         let package = message;
 
         let (input, uuid) = (self.input.clone(), self.uuid);
-        let add_data = StartAddData {
-            start: self.start.clone(),
+        let add_data = AddData {
             package,
             data: input,
             uuid,
         };
-        self.start.send(Box::new(add_data));
+        self.ctx.start(add_data);
 
         Ok(Next::Stop)
     }
