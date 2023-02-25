@@ -6,6 +6,10 @@ The name "dacti" comes from the lojban word describing something as being a mate
 
 [Read the dacti specification draft here!](docs/index.md)
 
+## Status
+
+Dacti is currently a draft specification, changes will use [Semantic Versioning 2.0.0](https://semver.org/). You can use dacti in your projects, but no guarantees about cross-compatibility exist until a 1.0 release of the specifications, besides an informal recommendation that 0.x minor versions stay compatible.
+
 ## Dacti Objects
 
 Dacti objects are a flexible self-describing metaverse object format, based on daicon components.
